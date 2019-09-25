@@ -37,14 +37,6 @@ Starcraft II AI Discord server. [Invite Link](https://discordapp.com/invite/Emm5
 
 5. Windows: Download and install [Visual Studio 2017](https://www.visualstudio.com/downloads/)
 
-6. Linux: Install 'gcc-c++'.
-
-7. Linux: Install the 'make' utility.
-
-8. OS X: Install XCode.
-
-9. OS X: Install XCode command-line tools.
-
 ## Build instructions
 
 ### Windows (Visual Studio)
