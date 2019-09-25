@@ -7,7 +7,7 @@
     - [Build instructions](#build-instructions)
 
 ## About
-Starcraft 2 rule-based bot capable to play for all races.
+Starcraft 2 rule-based bot for Terran race.
 
 benbot about things this is:
 * thing1
@@ -18,6 +18,8 @@ benbot about things this is:
 Starcraft II AI Discord server. [Invite Link](https://discordapp.com/invite/Emm5Ztz)
 
 ## Build requirements
+0. Download Starcraft II (https://starcraft2.com/en-us/)
+
 1. Download (the password is iagreetotheeula) at least one of the following map packs:
   * [Ladder 2017 Season 1](http://blzdistsc2-a.akamaihd.net/MapPacks/Ladder2017Season1.zip)
   * [Ladder 2017 Season 2](http://blzdistsc2-a.akamaihd.net/MapPacks/Ladder2017Season2.zip)
@@ -28,8 +30,6 @@ Starcraft II AI Discord server. [Invite Link](https://discordapp.com/invite/Emm5
 
 2. Put the downloaded maps into the Maps folder (create it if the folder doesn't exist):
   * Windows: C:\Program Files\StarCraft II\Maps
-  * OS X: /Applications/StarCraft II/Maps
-  * Linux: anywhere.
 
 3. Download and install [CMake](https://cmake.org/download/).
 
