@@ -1,0 +1,16 @@
+# OS X trash
+.DS_Store
+
+# SC2 replays
+*.SC2Replay
+
+# Build sandbox.
+build
+
+# IDE - VSCode
+.vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# Google linter
+cpplint.py
