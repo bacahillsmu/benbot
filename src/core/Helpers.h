@@ -85,6 +85,11 @@ struct IsFreeGeyser
     bool operator()(const sc2::Unit& unit_) const;
 };
 
+struct IsGeyser
+{
+    bool operator()(const sc2::Unit& unit_) const;
+};
+
 struct IsRefinery
 {
     bool operator()(const sc2::Unit& unit_) const;
@@ -113,6 +118,12 @@ struct IsIdleTownHall
 struct IsCommandCenter
 {
     bool operator()(const sc2::Unit& unit_) const;
+};
+
+struct IsBuilding
+{
+    bool operator()(const sc2::Unit& unit_) const;
+    bool operator()(sc2::UNIT_TYPEID type_) const;
 };
 
 struct IsAddonBuilding
@@ -167,6 +178,5 @@ static constexpr float ADDON_DISPLACEMENT_IN_X = 2.5f;
 static constexpr float ADDON_DISPLACEMENT_IN_Y = -0.5f;
 sc2::Point2D GetTerranAddonPosition(const sc2::Unit& unit_);
 sc2::Point2D GetTerranAddonPosition(const sc2::Point2D& parent_building_position_);
-
 
 

@@ -12,7 +12,8 @@
 namespace API
 {
 
-Action::Action(sc2::ActionInterface* action_): m_action(action_) {
+Action::Action(sc2::ActionInterface* action_): m_action(action_)
+{
 }
 
 void Action::Build(const Order& order_) {
@@ -20,12 +21,14 @@ void Action::Build(const Order& order_) {
     m_action->UnitCommand(&unit, order_.ability_id);
 }
 
-void Action::Build(const Order& order_, const sc2::Unit* unit_) {
+void Action::Build(const Order& order_, const sc2::Unit* unit_)
+{
     sc2::Unit unit = GameObject::ToUnit(order_.assignee);
     m_action->UnitCommand(&unit, order_.ability_id, unit_);
 }
 
-void Action::Build(const Order& order_, const sc2::Point2D& point_) {
+void Action::Build(const Order& order_, const sc2::Point2D& point_)
+{
     sc2::Unit unit = GameObject::ToUnit(order_.assignee);
     m_action->UnitCommand(&unit, order_.ability_id, point_);
 }
@@ -40,11 +43,13 @@ void Action::Cast(const sc2::Unit& assignee_, sc2::ABILITY_ID ability_, const sc
     m_action->UnitCommand(&assignee_, convert::ToAbilityID(ability_), &target_);
 }
 
-void Action::Cancel(const sc2::Unit& assignee_) {
+void Action::Cancel(const sc2::Unit& assignee_)
+{
     m_action->UnitCommand(&assignee_, sc2::ABILITY_ID::CANCEL);
 }
 
-void Action::CancelConstruction(const sc2::Unit& assignee_) {
+void Action::CancelConstruction(const sc2::Unit& assignee_)
+{
     m_action->UnitCommand(&assignee_, sc2::ABILITY_ID::CANCEL_BUILDINPROGRESS);
 }
 
@@ -53,29 +58,37 @@ void Action::OpenGate(const sc2::Unit& assignee_)
     m_action->UnitCommand(&assignee_, sc2::ABILITY_ID::MORPH_WARPGATE);
 }
 
-void Action::SendMessage(const std::string& text_) {
+void Action::SendMessage(const std::string& text_)
+{
     m_action->SendChat(text_);
 }
 
-Control::Control(sc2::ControlInterface* control_): m_control(control_) {
+Control::Control(sc2::ControlInterface* control_)
+    : m_control(control_)
+{
 }
 
-void Control::SaveReplay() {
+void Control::SaveReplay()
+{
     m_control->SaveReplay("LastReplay.SC2Replay");
 }
 
-Debug::Debug(sc2::DebugInterface* debug_): m_debug(debug_) {
+Debug::Debug(sc2::DebugInterface* debug_): m_debug(debug_)
+{
 }
 
-void Debug::DrawText(const std::string& message_) const {
+void Debug::DrawText(const std::string& message_) const
+{
     m_debug->DebugTextOut(message_);
 }
 
-void Debug::DrawText(const std::string& message_, const sc2::Point2D& point_) const {
+void Debug::DrawText(const std::string& message_, const sc2::Point2D& point_) const
+{
     m_debug->DebugTextOut(message_, sc2::Point3D(point_.x, point_.y, 0.35f));
 }
 
-void Debug::DrawText(const std::string& message_, const sc2::Point2DI& point_) const {
+void Debug::DrawText(const std::string& message_, const sc2::Point2DI& point_) const
+{
     sc2::Point3D dst = {
         static_cast<float>(point_.x),
         static_cast<float>(point_.y),
@@ -84,7 +97,8 @@ void Debug::DrawText(const std::string& message_, const sc2::Point2DI& point_) c
     m_debug->DebugTextOut(message_, dst);
 }
 
-void Debug::DrawText(float value_, const sc2::Point2DI& point_) const {
+void Debug::DrawText(float value_, const sc2::Point2DI& point_) const
+{
     sc2::Point3D dst = {
         static_cast<float>(point_.x),
         static_cast<float>(point_.y),
@@ -93,33 +107,40 @@ void Debug::DrawText(float value_, const sc2::Point2DI& point_) const {
     m_debug->DebugTextOut(std::to_string(value_), dst);
 }
 
-void Debug::DrawText(const std::string& message_, const sc2::Point3D& pos_) const {
+void Debug::DrawText(const std::string& message_, const sc2::Point3D& pos_) const
+{
     m_debug->DebugTextOut(message_, pos_);
 }
 
-void Debug::DrawSphere(const sc2::Point3D& center_, float radius_) const {
+void Debug::DrawSphere(const sc2::Point3D& center_, float radius_) const
+{
     m_debug->DebugSphereOut(center_, radius_);
 }
 
-void Debug::DrawBox(const sc2::Point3D& min_, const sc2::Point3D& max_) const {
+void Debug::DrawBox(const sc2::Point3D& min_, const sc2::Point3D& max_) const
+{
     m_debug->DebugBoxOut(min_, max_);
 }
 
-void Debug::DrawLine(const sc2::Point3D& start_, const sc2::Point3D& end_) const {
+void Debug::DrawLine(const sc2::Point3D& start_, const sc2::Point3D& end_) const
+{
     m_debug->DebugLineOut(start_, end_);
 }
 
-void Debug::EndGame() const {
+void Debug::EndGame() const
+{
     m_debug->DebugEndGame(true);
     SendDebug();
 }
 
-void Debug::SendDebug() const {
+void Debug::SendDebug() const
+{
     m_debug->SendDebug();
 }
 
-Observer::Observer(const sc2::ObservationInterface* observer_):
-    m_observer(observer_) {
+Observer::Observer(const sc2::ObservationInterface* observer_)
+    :m_observer(observer_)
+{
 }
 
 const sc2::Unit* Observer::GetUnit(sc2::Tag tag_) const
@@ -127,7 +148,8 @@ const sc2::Unit* Observer::GetUnit(sc2::Tag tag_) const
     return m_observer->GetUnit(tag_);
 }
 
-Units Observer::GetUnits(sc2::Unit::Alliance alliance_) const {
+Units Observer::GetUnits(sc2::Unit::Alliance alliance_) const
+{
     return Units(m_observer->GetUnits(alliance_));
 }
 
@@ -136,39 +158,48 @@ Units Observer::GetUnits(const sc2::Filter& filter_, sc2::Unit::Alliance allianc
     return Units(m_observer->GetUnits(alliance_, filter_));
 }
 
-size_t Observer::CountUnitType(sc2::UNIT_TYPEID type_) const {
+size_t Observer::CountUnitType(sc2::UNIT_TYPEID type_) const
+{
     return m_observer->GetUnits(IsUnit(type_)).size();
 }
 
-size_t Observer::CountUnitsTypes(const std::set<sc2::UNIT_TYPEID>& types_) {
+size_t Observer::CountUnitsTypes(const std::set<sc2::UNIT_TYPEID>& types_)
+{
     return m_observer->GetUnits(OneOfUnits(types_)).size();
 }
 
-const sc2::GameInfo& Observer::GameInfo() const {
+const sc2::GameInfo& Observer::GameInfo() const
+{
     return m_observer->GetGameInfo();
 }
 
-sc2::Point3D Observer::StartingLocation() const {
+sc2::Point3D Observer::StartingLocation() const
+{
     return m_observer->GetStartLocation();
 }
 
-float Observer::GetFoodCap() const {
+float Observer::GetFoodCap() const
+{
     return static_cast<float>(m_observer->GetFoodCap());
 }
 
-float Observer::GetFoodUsed() const {
+float Observer::GetFoodUsed() const
+{
     return static_cast<float>(m_observer->GetFoodUsed());
 }
 
-uint32_t Observer::GetMinerals() const {
+uint32_t Observer::GetMinerals() const
+{
     return m_observer->GetMinerals();
 }
 
-uint32_t Observer::GetVespene() const {
+uint32_t Observer::GetVespene() const
+{
     return m_observer->GetVespene();
 }
 
-float Observer::GetAvailableFood() const {
+float Observer::GetAvailableFood() const
+{
     return GetFoodCap() - GetFoodUsed();
 }
 
@@ -176,7 +207,8 @@ sc2::UnitTypeData Observer::GetUnitTypeData(sc2::UNIT_TYPEID id_) const
 {
     sc2::UnitTypeData data = m_observer->GetUnitTypeData()[convert::ToUnitTypeID(id_)];
 
-    switch (id_) {
+    switch (id_)
+    {
         // NOTE (alkurbatov): Unfortunately SC2 API returns wrong mineral cost
         // and tech_requirement for orbital command, planetary fortress,
         // lair, hive and greater spire.
@@ -276,39 +308,51 @@ sc2::UnitTypeData Observer::GetUnitTypeData(sc2::UNIT_TYPEID id_) const
     return data;
 }
 
-sc2::UpgradeData Observer::GetUpgradeData(sc2::UPGRADE_ID id_) const {
+sc2::UpgradeData Observer::GetUpgradeData(sc2::UPGRADE_ID id_) const
+{
     return m_observer->GetUpgradeData()[convert::ToUpgradeID(id_)];
 }
 
-sc2::AbilityData Observer::GetAbilityData(sc2::ABILITY_ID id_) const {
+sc2::AbilityData Observer::GetAbilityData(sc2::ABILITY_ID id_) const
+{
     return m_observer->GetAbilityData()[convert::ToAbilityID(id_)];
 }
 
-sc2::Race Observer::GetCurrentRace() const {
+sc2::Race Observer::GetCurrentRace() const
+{
     uint32_t id = m_observer->GetPlayerID();
     return m_observer->GetGameInfo().player_info[id - 1].race_actual;
 }
 
-const std::vector<sc2::ChatMessage>& Observer::GetChatMessages() const {
+const std::vector<sc2::ChatMessage>& Observer::GetChatMessages() const
+{
     return m_observer->GetChatMessages();
 }
 
-uint32_t Observer::GetGameLoop() const {
+uint32_t Observer::GetGameLoop() const
+{
     return m_observer->GetGameLoop();
 }
 
-const sc2::ScoreDetails Observer::GetScoreDetails() const {
+const sc2::ScoreDetails Observer::GetScoreDetails() const
+{
     return m_observer->GetScore().score_details;
 }
 
-bool Observer::HasCreep(const sc2::Point2D& point_) const {
+bool Observer::HasCreep(const sc2::Point2D& point_) const
+{
     return m_observer->HasCreep(point_);
 }
 
-Query::Query(sc2::QueryInterface* query_): m_query(query_) {
+// ----------------------------------------------------------------------------
+// Queries;
+// ----------------------------------------------------------------------------
+Query::Query(sc2::QueryInterface* query_): m_query(query_)
+{
 }
 
-bool Query::CanBePlaced(const Order& order_, const sc2::Point2D& point_) {
+bool Query::CanBePlaced(const Order& order_, const sc2::Point2D& point_)
+{
     return m_query->Placement(order_.ability_id, point_);
 }
 
@@ -324,12 +368,12 @@ Interface::Interface(sc2::ActionInterface* action_,
                      sc2::ControlInterface* control_,
                      sc2::DebugInterface* debug_,
                const sc2::ObservationInterface* observer_,
-                     sc2::QueryInterface* query_):
-    m_action(action_),
-    m_control(control_),
-    m_debug(debug_),
-    m_observer(observer_),
-    m_query(query_)
+                     sc2::QueryInterface* query_)
+    :m_action(action_)
+    ,m_control(control_)
+    ,m_debug(debug_)
+    ,m_observer(observer_)
+    ,m_query(query_)
 {
 }
 

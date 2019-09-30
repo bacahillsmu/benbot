@@ -16,6 +16,90 @@ namespace {
 const float PI = 3.1415927f;
 
 // ----------------------------------------------------------------------------
+struct MineralLine
+{
+    explicit MineralLine(const sc2::Point3D& initialPatchPoint_);
+
+    void AddMineralPath(const sc2::Point3D& additionalPatchPoint_);
+    float GetMineralPatchHeight() const;
+    sc2::Point2D Center() const;
+
+    sc2::Point2D m_townHallLocation;
+    std::vector<sc2::Point3D> m_mineralPatchLocations;
+};
+
+// ----------------------------------------------------------------------------
+MineralLine::MineralLine(const sc2::Point3D& initialPatchPoint_)
+{
+    // Each base has 8 mineral patches. Until Blizzard decides to shake things up, then we fucked;
+    m_mineralPatchLocations.reserve(8);
+    m_mineralPatchLocations.push_back(initialPatchPoint_);
+}
+
+// ----------------------------------------------------------------------------
+void MineralLine::AddMineralPath(const sc2::Point3D& additionalPatchPoint_)
+{
+    m_mineralPatchLocations.push_back(additionalPatchPoint_);
+}
+
+// ----------------------------------------------------------------------------
+float MineralLine::GetMineralPatchHeight() const
+{
+    if(m_mineralPatchLocations.empty())
+    {
+        return 0.0f;
+    }
+
+    return m_mineralPatchLocations.back().z;
+}
+
+// ----------------------------------------------------------------------------
+sc2::Point2D MineralLine::Center() const
+{
+    if(m_mineralPatchLocations.empty())
+    {
+        return;
+    }
+
+    float x = 0;
+    float y = 0;
+    for (auto& mineralPatch : m_mineralPatchLocations)
+    {
+        x += mineralPatch.x;
+        y += mineralPatch.y;
+    }
+
+    float centerX = x / m_mineralPatchLocations.size();
+    float centerY = y / m_mineralPatchLocations.size();
+
+    return sc2::Point2D(centerX, centerY);
+}
+
+void CalculateGroundDistance(Expansions& expansions_)
+{
+    for(auto& expansion : expansions_)
+    {
+        std::vector<sc2::QueryInterface::PathingQuery> queries;
+        queries.reserve(expansions_.size());
+
+        for(auto& expansion2 : expansions_)
+        {
+            if(expansion == expansion2 || expansion->GetDistanceToOtherExpansion(expansion2) != 0.0f)
+            {
+                continue;
+            }
+
+            sc2::QueryInterface::PathingQuery query;
+            query.start_ = expansion->m_townHallLocation;
+            query.end_ = expansion2->m_townHallLocation;
+            queries.push_back(query);
+        }
+
+        auto results = gAPI->query().PathingDistances(queries);
+    }
+}
+
+// ----------------------------------------------------------------------------
 size_t CalculateQueries(float radius, float step_size, const sc2::Point2D& center, std::vector<sc2::QueryInterface::PlacementQuery>* queries)
 {
     sc2::Point2D current_grid(std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
@@ -106,9 +190,21 @@ sc2::Point3D Cluster::Center() const
 
 // ----------------------------------------------------------------------------
 Expansion::Expansion(const sc2::Point3D& town_hall_location_)
-    :town_hall_location(town_hall_location_)
-    ,owner(Owner::NEUTRAL)
+    :m_townHallLocation(town_hall_location_)
+    ,m_owner(Owner::NEUTRAL)
 {
+}
+
+// ----------------------------------------------------------------------------
+float Expansion::GetDistanceToOtherExpansion(const std::shared_ptr<Expansion>& otherExpansion_) const
+{
+    auto foundExpansion = m_expansionGroundDistances.find(otherExpansion_);
+    if (foundExpansion != m_expansionGroundDistances.end())
+    {
+        return foundExpansion->second;
+    }
+
+    return 0.0f;
 }
 
 // ----------------------------------------------------------------------------
@@ -178,3 +274,7 @@ Expansions CalculateExpansionLocations()
 
     return expansions;
 }
+
+
+
+std::unique_ptr<Overseer::MapImpl> gOverseerMap;

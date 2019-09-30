@@ -9,6 +9,7 @@
 #include "core/Helpers.h"
 #include "core/Map.h"
 #include "core/Timer.h"
+#include "core/BuildingPlacer.hpp"
 #include "plugins/ChatterBox.h"
 #include "plugins/Diagnosis.h"
 #include "plugins/Miner.h"
@@ -42,38 +43,28 @@ void Dispatcher::OnGameStart()
     gHistory.info() << "New game started!" << std::endl;
 
     sc2::Race current_race = gAPI->observer().GetCurrentRace();
+
     gHub.reset(new Hub(current_race, CalculateExpansionLocations()));
+    gBuildingPlacer.reset(new BuildingPlacer());
+    gOverseerMap.reset(new Overseer::MapImpl(this));
+
+    gBuildingPlacer->OnGameStart();
+    gOverseerMap->initialize();
 
     m_plugins.emplace_back(new Miner());
     m_plugins.emplace_back(new QuarterMaster());
     m_plugins.emplace_back(new RepairMan());
     m_plugins.emplace_back(new ChatterBox());
 
-    //m_plugins.emplace_back(new MarinePush());
     m_plugins.emplace_back(new MechOpener());
     m_plugins.emplace_back(new ReaperFirst());
 
-    // FIXME (alkurbatov): Implement smarter strategy picker.
-//     if (current_race == sc2::Race::Protoss)
-//     {
-//         m_plugins.emplace_back(new WarpSmith());
-//         m_plugins.emplace_back(new FourWGP());
-//     }
-//     else if (current_race == sc2::Race::Terran)
-//     {
-//         m_plugins.emplace_back(new MarinePush());
-//     }
-//     else if (current_race == sc2::Race::Zerg)
-//     {
-//         m_plugins.emplace_back(new InjectHatcheries());
-//         m_plugins.emplace_back(new HatchFirst17());
-//     }
+
 
 #ifdef DEBUG
     m_plugins.emplace_back(new Diagnosis());
 #endif
 
-    // Go through each plugin and start it;
     for (const auto& i : m_plugins)
     {
         i->OnGameStart(m_builder.get());

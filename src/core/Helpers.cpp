@@ -8,6 +8,9 @@
 #include "blueprints/Unit.h"
 #include "core/API.h"
 
+#include <algorithm>
+#include <vector>
+
 // ----------------------------------------------------------------------------
 IsUnit::IsUnit(sc2::UNIT_TYPEID type_):
     m_type(type_)
@@ -175,6 +178,23 @@ bool IsFreeGeyser::operator()(const sc2::Unit& unit_) const {
 }
 
 // ----------------------------------------------------------------------------
+bool IsGeyser::operator()(const sc2::Unit& unit_) const
+{
+    switch (unit_.unit_type.ToType())
+    {
+        case sc2::UNIT_TYPEID::NEUTRAL_VESPENEGEYSER:
+        case sc2::UNIT_TYPEID::NEUTRAL_PROTOSSVESPENEGEYSER:
+        case sc2::UNIT_TYPEID::NEUTRAL_SPACEPLATFORMGEYSER:
+        case sc2::UNIT_TYPEID::NEUTRAL_PURIFIERVESPENEGEYSER:
+        case sc2::UNIT_TYPEID::NEUTRAL_SHAKURASVESPENEGEYSER:
+        case sc2::UNIT_TYPEID::NEUTRAL_RICHVESPENEGEYSER:
+            return true;
+        default:
+            return false;
+    }
+}
+
+// ----------------------------------------------------------------------------
 bool IsRefinery::operator()(const sc2::Unit& unit_) const
 {
     if (unit_.build_progress != 1.0f)
@@ -241,6 +261,26 @@ bool IsCommandCenter::operator()(const sc2::Unit& unit_) const
         || unit_.unit_type == sc2::UNIT_TYPEID::TERRAN_ORBITALCOMMAND      
         || unit_.unit_type == sc2::UNIT_TYPEID::TERRAN_ORBITALCOMMANDFLYING
         || unit_.unit_type == sc2::UNIT_TYPEID::TERRAN_PLANETARYFORTRESS;
+}
+
+// ----------------------------------------------------------------------------
+bool IsBuilding::operator()(const sc2::Unit& unit_) const
+{
+    return (*this)(unit_.unit_type);
+}
+
+// ----------------------------------------------------------------------------
+bool IsBuilding::operator()(sc2::UNIT_TYPEID type_) const
+{
+    // This counts as a structure, but not in the cases that we want to use this for;
+    if(type_ == sc2::UNIT_TYPEID::TERRAN_AUTOTURRET)
+    {
+        return false;
+    }
+
+    sc2::UnitTypeData data = gAPI->observer().GetUnitTypeData(type_);
+    return std::find(data.attributes.begin(), data.attributes.end(), sc2::Attribute::Structure) != data.attributes.end();
+
 }
 
 // ----------------------------------------------------------------------------
@@ -357,5 +397,3 @@ sc2::Point2D GetTerranAddonPosition(const sc2::Point2D& parent_building_position
     pos.y += ADDON_DISPLACEMENT_IN_Y;
     return pos;
 }
-
-

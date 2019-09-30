@@ -24,8 +24,8 @@ SortByDistance::SortByDistance(const sc2::Point3D& point_):
 }
 
 bool SortByDistance::operator()(const Expansion& lhs_, const Expansion& rhs_) const {
-    return sc2::DistanceSquared2D(lhs_.town_hall_location, m_point) <
-        sc2::DistanceSquared2D(rhs_.town_hall_location, m_point);
+    return sc2::DistanceSquared2D(lhs_.m_townHallLocation, m_point) <
+        sc2::DistanceSquared2D(rhs_.m_townHallLocation, m_point);
 }
 
 }  // namespace
@@ -90,11 +90,11 @@ void Hub::OnUnitCreated(const sc2::Unit& unit_) {
         case sc2::UNIT_TYPEID::TERRAN_COMMANDCENTER:
         case sc2::UNIT_TYPEID::ZERG_HATCHERY:
             for (auto& i : m_expansions) {
-                if (std::floor(i.town_hall_location.x) != std::floor(unit_.pos.x) ||
-                        std::floor(i.town_hall_location.y) != std::floor(unit_.pos.y))
+                if (std::floor(i->m_townHallLocation.x) != std::floor(unit_.pos.x) ||
+                        std::floor(i->m_townHallLocation.y) != std::floor(unit_.pos.y))
                     continue;
 
-                i.owner = Owner::SELF;
+                i->m_owner = Owner::SELF;
                 gHistory.info() << "Capture region: (" <<
                     unit_.pos.x << ", " << unit_.pos.y <<
                     ")" << std::endl;
@@ -144,11 +144,11 @@ void Hub::OnUnitDestroyed(const sc2::Unit& unit_) {
         case sc2::UNIT_TYPEID::ZERG_HIVE:
         case sc2::UNIT_TYPEID::ZERG_LAIR:
             for (auto& i : m_expansions) {
-                if (std::floor(i.town_hall_location.x) != std::floor(unit_.pos.x) ||
-                        std::floor(i.town_hall_location.y) != std::floor(unit_.pos.y))
+                if (std::floor(i->m_townHallLocation.x) != std::floor(unit_.pos.x) ||
+                        std::floor(i->m_townHallLocation.y) != std::floor(unit_.pos.y))
                     continue;
 
-                i.owner = Owner::NEUTRAL;
+                i->m_owner = Owner::NEUTRAL;
                 gHistory.info() << "Lost region: (" <<
                     unit_.pos.x << ", " << unit_.pos.y <<
                     ")" << std::endl;
@@ -281,17 +281,30 @@ const Expansions& Hub::GetExpansions() const {
     return m_expansions;
 }
 
-const sc2::Point3D* Hub::GetNextExpansion() {
-    auto it = std::find_if(m_expansions.begin(), m_expansions.end(),
-        [](const Expansion& expansion_) {
-            return expansion_.owner == Owner::NEUTRAL;
-        });
+const sc2::Point3D* Hub::GetNextExpansion()
+{
+    for(auto e : m_expansions)
+    {
+        if(e->m_owner == Owner::NEUTRAL)
+        {
+            e->m_owner = Owner::CONTESTED;
+            return &e->m_townHallLocation;
+        }
+    }
 
-    if (it == m_expansions.end())
-        return nullptr;
+    return nullptr;
 
-    it->owner = Owner::CONTESTED;
-    return &(it->town_hall_location);
+//     auto it = std::find_if(m_expansions.begin(), m_expansions.end(),
+//         [](const Expansion& expansion_)
+//         {
+//             return expansion_.m_owner == Owner::NEUTRAL;
+//         });
+// 
+//     if (it == m_expansions.end())
+//         return nullptr;
+// 
+//     it->m_owner = Owner::CONTESTED;
+//     return &(it->m_townHallLocation);
 }
 
 std::unique_ptr<Hub> gHub;
