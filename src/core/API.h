@@ -113,10 +113,14 @@ struct Query
 {
     explicit Query(sc2::QueryInterface* query_);
 
+    bool CanBePlaced(sc2::ABILITY_ID ability_id_, const sc2::Point2D& point_);
     bool CanBePlaced(const Order& order_, const sc2::Point2D& point_);
-
     std::vector<bool> CanBePlaced(const std::vector<sc2::QueryInterface::PlacementQuery>& queries_);
 
+    float PathingDistance(const sc2::Point2D& start_, const sc2::Point2D& end_) const;
+    float PathingDistance(const sc2::Unit* start_, const sc2::Point2D& end_) const;
+    std::vector<float> PathingDistances(const std::vector<sc2::QueryInterface::PathingQuery>& queries_) const;
+    sc2::AvailableAbilities GetAbilitiesForUnit(const sc2::Unit* unit_, bool ignore_resource_requirements_) const;
 
  private:
 

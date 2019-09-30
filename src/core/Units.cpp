@@ -48,6 +48,11 @@ const sc2::Unit* Units::GetClosestUnit(sc2::Tag tag_) const
     return GetClosestUnit(unit->pos);
 }
 
+const sc2::Unit* Units::GetClosestUnit(const sc2::Point3D& point_) const
+{
+    return GetClosestUnit(sc2::Point2D(point_.x, point_.y));
+}
+
 const sc2::Unit* Units::GetRandomUnit() const
 {
     int index = sc2::GetRandomInteger(0, static_cast<int>(m_units.size()) - 1);
@@ -66,4 +71,13 @@ bool Units::HasOrder(sc2::ABILITY_ID id_) const
     }
 
     return false;
+}
+
+void Units::remove(const sc2::Unit* unit)
+{
+    auto itr = std::find(m_units.begin(), m_units.end(), unit);
+    if (itr != m_units.end())
+    {
+        m_units.erase(itr);
+    }
 }

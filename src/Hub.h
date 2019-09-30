@@ -107,7 +107,7 @@ T* Cache<T>::GetClosestTo(const sc2::Point2D& location_) {
 
 struct Hub
 {
-    Hub(sc2::Race current_race_, const Expansions& expansions_);
+    Hub(sc2::Race current_race_, Expansions expansions_);
 
     void OnStep();
     void OnUnitCreated(const sc2::Unit& unit_);

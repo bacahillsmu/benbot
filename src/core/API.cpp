@@ -351,14 +351,46 @@ Query::Query(sc2::QueryInterface* query_): m_query(query_)
 {
 }
 
+// ----------------------------------------------------------------------------
+bool Query::CanBePlaced(sc2::ABILITY_ID ability_id_, const sc2::Point2D& point_)
+{
+    return m_query->Placement(ability_id_, point_);
+}
+
+// ----------------------------------------------------------------------------
 bool Query::CanBePlaced(const Order& order_, const sc2::Point2D& point_)
 {
     return m_query->Placement(order_.ability_id, point_);
 }
 
+// ----------------------------------------------------------------------------
 std::vector<bool> Query::CanBePlaced(const std::vector<sc2::QueryInterface::PlacementQuery>& queries_)
 {
     return m_query->Placement(queries_);
+}
+
+// ----------------------------------------------------------------------------
+float Query::PathingDistance(const sc2::Point2D& start_, const sc2::Point2D& end_) const
+{
+    return m_query->PathingDistance(start_, end_);
+}
+
+// ----------------------------------------------------------------------------
+float Query::PathingDistance(const sc2::Unit* start_, const sc2::Point2D& end_) const
+{
+    return m_query->PathingDistance(start_, end_);
+}
+
+// ----------------------------------------------------------------------------
+std::vector<float> Query::PathingDistances(const std::vector<sc2::QueryInterface::PathingQuery>& queries_) const
+{
+    return m_query->PathingDistance(queries_);
+}
+
+// ----------------------------------------------------------------------------
+sc2::AvailableAbilities Query::GetAbilitiesForUnit(const sc2::Unit* unit_, bool ignore_resource_requirements_) const
+{
+    return m_query->GetAbilitiesForUnit(unit_, ignore_resource_requirements_);
 }
 
 // ----------------------------------------------------------------------------

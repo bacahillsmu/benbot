@@ -131,13 +131,13 @@ sc2::Point3D BuildingPlacer::ReserveBuildingSpace(const Order& order_, bool rese
             {
                 point.x = x;
                 point.y = y;
-                if (IsBuildSpaceFree(point, width + (buildingMargin * 2.0f), height + (buildingMargin * 2.0f), wrappedRegion.m_buildableTiles))
+                if (IsBuildSpaceFree(point, width + (buildingMargin * 2), height + (buildingMargin * 2), wrappedRegion.m_buildableTiles))
                 {
                     if (reserveAddonSpace_)
                     {
                         addonPoint = point;
                         addonPoint.x += width;
-                        if (IsBuildSpaceFree(addonPoint, AddonSize + (buildingMargin * 2.0f), AddonSize + (buildingMargin * 2.0f), wrappedRegion.m_buildableTiles))
+                        if (IsBuildSpaceFree(addonPoint, AddonSize + (buildingMargin * 2), AddonSize + (buildingMargin * 2), wrappedRegion.m_buildableTiles))
                         {
                             addonPoint.x += buildingMargin;
                             addonPoint.y += buildingMargin;

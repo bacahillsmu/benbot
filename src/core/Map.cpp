@@ -14,30 +14,34 @@
 namespace {
 
 const float PI = 3.1415927f;
+constexpr float PatchNeighborDistance = 5.0f;
+constexpr float DistanceErrorMargin = 10.0f;
+constexpr int SearchMinOffset = -10;
+constexpr int SearchMaxOffset = 10;
+constexpr sc2::ABILITY_ID TestAbility = sc2::ABILITY_ID::BUILD_COMMANDCENTER;
 
 // ----------------------------------------------------------------------------
 struct MineralLine
 {
     explicit MineralLine(const sc2::Point3D& initialPatchPoint_);
 
-    void AddMineralPath(const sc2::Point3D& additionalPatchPoint_);
+    void AddMineralPatch(const sc2::Point3D& additionalPatchPoint_);
     float GetMineralPatchHeight() const;
     sc2::Point2D Center() const;
 
-    sc2::Point2D m_townHallLocation;
+    sc2::Point2D m_townHallLocation = sc2::Point2D(0.0f, 0.0f);
     std::vector<sc2::Point3D> m_mineralPatchLocations;
 };
 
 // ----------------------------------------------------------------------------
 MineralLine::MineralLine(const sc2::Point3D& initialPatchPoint_)
 {
-    // Each base has 8 mineral patches. Until Blizzard decides to shake things up, then we fucked;
     m_mineralPatchLocations.reserve(8);
     m_mineralPatchLocations.push_back(initialPatchPoint_);
 }
 
 // ----------------------------------------------------------------------------
-void MineralLine::AddMineralPath(const sc2::Point3D& additionalPatchPoint_)
+void MineralLine::AddMineralPatch(const sc2::Point3D& additionalPatchPoint_)
 {
     m_mineralPatchLocations.push_back(additionalPatchPoint_);
 }
@@ -58,7 +62,7 @@ sc2::Point2D MineralLine::Center() const
 {
     if(m_mineralPatchLocations.empty())
     {
-        return;
+        return sc2::Point2D(0.0f, 0.0f);
     }
 
     float x = 0;
@@ -75,7 +79,7 @@ sc2::Point2D MineralLine::Center() const
     return sc2::Point2D(centerX, centerY);
 }
 
-void CalculateGroundDistance(Expansions& expansions_)
+void CalculateGroundDistances(Expansions& expansions_)
 {
     for(auto& expansion : expansions_)
     {
@@ -95,7 +99,138 @@ void CalculateGroundDistance(Expansions& expansions_)
             queries.push_back(query);
         }
 
-        auto results = gAPI->query().PathingDistances(queries);
+        std::vector<float> results = gAPI->query().PathingDistances(queries);
+
+        std::size_t i = 0;
+        for (auto& expansion2 : expansions_)
+        {
+            if (expansion == expansion2 || expansion->GetDistanceToOtherExpansion(expansion2) != 0.0f)
+            {
+                continue;
+            }
+
+            expansion->m_expansionGroundDistances[expansion2] = results[i];
+            expansion2->m_expansionGroundDistances[expansion] = results[i];
+            i++;
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------
+Units GetMineralPatchesAtBase(const sc2::Point3D& baseLocation_)
+{
+    return gAPI->observer().GetUnits(
+        MultiFilter(MultiFilter::Selector::And,
+        {
+                IsMineralPatch(),
+                IsWithinDistance(baseLocation_, 15.0f)
+        }));
+}
+
+// ----------------------------------------------------------------------------
+sc2::Point3D GetCenterBehindMinerals(const sc2::Point3D& baseLocation_)
+{
+    auto mineralPatches = GetMineralPatchesAtBase(baseLocation_);
+
+    if (mineralPatches().empty())
+    {
+        return baseLocation_;
+    }
+
+    sc2::Point3D resourceCenter;
+    float maxDist = 0;
+    for (const auto& mineralPatch : mineralPatches())
+    {
+        resourceCenter += mineralPatch->pos;
+        float dist = sc2::Distance2D(mineralPatch->pos, baseLocation_);
+        if (maxDist < dist)
+        {
+            maxDist = dist;
+        }
+    }
+
+    resourceCenter.x /= (float)mineralPatches().size();
+    resourceCenter.y /= (float)mineralPatches().size();
+    resourceCenter.z = baseLocation_.z;
+
+    // Get direction vector
+    auto directionVector = resourceCenter - baseLocation_;
+    sc2::Normalize3D(directionVector);
+
+    return baseLocation_ + directionVector * (maxDist + 1.5f);
+}
+
+// ----------------------------------------------------------------------------
+std::vector<MineralLine> GetMineralLines()
+{
+    auto mineralPatches = gAPI->observer().GetUnits(
+        [](const auto& unit)
+        {
+            return unit.unit_type == sc2::UNIT_TYPEID::NEUTRAL_MINERALFIELD
+                || unit.unit_type == sc2::UNIT_TYPEID::NEUTRAL_MINERALFIELD750
+                || unit.unit_type == sc2::UNIT_TYPEID::NEUTRAL_RICHMINERALFIELD
+                || unit.unit_type == sc2::UNIT_TYPEID::NEUTRAL_RICHMINERALFIELD750
+                || unit.unit_type == sc2::UNIT_TYPEID::NEUTRAL_PURIFIERMINERALFIELD
+                || unit.unit_type == sc2::UNIT_TYPEID::NEUTRAL_PURIFIERMINERALFIELD750
+                || unit.unit_type == sc2::UNIT_TYPEID::NEUTRAL_PURIFIERRICHMINERALFIELD
+                || unit.unit_type == sc2::UNIT_TYPEID::NEUTRAL_PURIFIERRICHMINERALFIELD750
+                || unit.unit_type == sc2::UNIT_TYPEID::NEUTRAL_LABMINERALFIELD
+                || unit.unit_type == sc2::UNIT_TYPEID::NEUTRAL_LABMINERALFIELD750
+                || unit.unit_type == sc2::UNIT_TYPEID::NEUTRAL_BATTLESTATIONMINERALFIELD
+                || unit.unit_type == sc2::UNIT_TYPEID::NEUTRAL_BATTLESTATIONMINERALFIELD750;
+        });
+
+    std::vector<MineralLine> mineralLines;
+    mineralLines.reserve(16);
+    while (!mineralPatches.empty())
+    {
+        std::queue<sc2::Point3D> mineralFrontier;
+        mineralFrontier.push(mineralPatches.front()->pos);
+
+        MineralLine mineralLine(mineralFrontier.front());
+        mineralPatches.erase(mineralPatches.begin());
+
+        while (!mineralPatches.empty() && !mineralFrontier.empty())
+        {
+            auto mineralPosition = mineralFrontier.front();
+            auto closestPatch = mineralPatches.GetClosestUnit(mineralPosition);
+            auto distance = Distance2D(closestPatch->pos, mineralPosition);
+
+            if (distance >= PatchNeighborDistance)
+            {
+                mineralFrontier.pop();
+                continue;
+            }
+
+            mineralFrontier.push(closestPatch->pos);
+            mineralLine.AddMineralPatch(closestPatch->pos);
+            mineralPatches.remove(closestPatch);
+        }
+
+        mineralLines.push_back(mineralLine);
+    }
+
+    gHistory.info() << "Map contains " << mineralLines.size() << " mineral lines" << std::endl;
+
+    return mineralLines;
+}
+
+// ----------------------------------------------------------------------------
+void CalculateGeysers(Expansions& expansions)
+{
+    auto geysers = gAPI->observer().GetUnits(IsGeyser(), sc2::Unit::Alliance::Neutral);
+
+    for (auto& geyser : geysers)
+    {
+        auto closest = expansions[0];
+        for (auto& expansion : expansions)
+        {
+            if (sc2::DistanceSquared2D(geyser->pos, expansion->m_townHallLocation) < sc2::DistanceSquared2D(geyser->pos, closest->m_townHallLocation))
+            {
+                closest = expansion;
+            }
+        }
+        closest->geysersPosition.emplace_back(geyser->pos);
     }
 }
 
@@ -210,69 +345,157 @@ float Expansion::GetDistanceToOtherExpansion(const std::shared_ptr<Expansion>& o
 // ----------------------------------------------------------------------------
 Expansions CalculateExpansionLocations()
 {
-    Clusters clusters;
-    clusters.reserve(20);
+    auto mineralLines = GetMineralLines();
 
-    auto resources = gAPI->observer().GetUnits(IsFoggyResource(), sc2::Unit::Alliance::Neutral);
-
-    if (resources.Empty())
+    if (mineralLines.empty())
     {
-        gHistory.warning() << "No expansions locations could be found!" << std::endl;
+        gHistory.error() << "No expansion locations could be found!" << std::endl;
         return Expansions();
     }
 
-    for (const auto& i : resources())
+    Expansions expansions;
+
+    auto myTownHall = gAPI->observer().GetUnits(IsUnit(sc2::UNIT_TYPEID::TERRAN_COMMANDCENTER), sc2::Unit::Alliance::Self);
+
+    if (!myTownHall.empty())
     {
-        bool cluster_found = false;
-        for (auto& j : clusters)
+        for (auto itr = mineralLines.begin(); itr != mineralLines.end(); ++itr)
         {
-            if (sc2::DistanceSquared3D(i->pos, j.points.back()) < 225.0f)
+            if (sc2::Distance2D(itr->Center(), myTownHall.front()->pos) < DistanceErrorMargin)
             {
-                j.AddPoint(i->pos);
-                cluster_found = true;
+                auto expansion = std::make_shared<Expansion>(myTownHall.front()->pos);
+                expansion->m_alliance = sc2::Unit::Alliance::Self;
+                expansion->m_townHall = myTownHall.front();
+                expansions.emplace_back(std::move(expansion));
+                mineralLines.erase(itr);
                 break;
             }
         }
-
-        if (!cluster_found)
-        {
-            clusters.emplace_back(clusters.size());
-            clusters.back().AddPoint(i->pos);
-        }
     }
 
-    std::vector<size_t> query_size;
-    std::vector<sc2::QueryInterface::PlacementQuery> queries;
-    for (auto& i : clusters)
+    for (auto& mineralLine : mineralLines)
     {
-        query_size.push_back(CalculateQueries(5.3f, 0.5f, i.Center(), &queries));
-    }
+        auto center = mineralLine.Center();
+        center.x = (int)(center.x) + 0.5f;
+        center.y = (int)(center.y) + 0.5f;
 
-    std::vector<bool> results = gAPI->query().CanBePlaced(queries);
-
-    size_t start_index = 0;
-    Expansions expansions;
-    for (auto& i : clusters)
-    {
-        for (size_t j = start_index, e = start_index + query_size[i.id]; j < e; ++j)
+        std::vector<sc2::QueryInterface::PlacementQuery> queries;
+        queries.reserve((SearchMaxOffset - SearchMinOffset + 1) * (SearchMaxOffset - SearchMinOffset + 1));
+        for (int x_offset = SearchMinOffset; x_offset <= SearchMaxOffset; x_offset++)
         {
-            if (!results[j])
+            for (int y_offset = SearchMinOffset; y_offset <= SearchMaxOffset; y_offset++)
             {
-                continue;
+                sc2::Point2D pos(center.x + x_offset, center.y + y_offset);
+                queries.emplace_back(TestAbility, pos);
             }
+        }
+        auto results = gAPI->query().CanBePlaced(queries);
 
-            sc2::Point3D town_hall_location = sc2::Point3D(
-                queries[j].target_pos.x,
-                queries[j].target_pos.y,
-                i.Height());
-            expansions.emplace_back(town_hall_location);
-            break;
+        for (int x_offset = SearchMinOffset; x_offset <= SearchMaxOffset; x_offset++)
+        {
+            for (int y_offset = SearchMinOffset; y_offset <= SearchMaxOffset; y_offset++)
+            {
+                sc2::Point2D pos(center.x + x_offset, center.y + y_offset);
+
+                int index = (x_offset + 0 - SearchMinOffset) * (SearchMaxOffset - SearchMinOffset + 1) + (y_offset + 0 - SearchMinOffset);
+                assert(0 <= index && index < (int)(results.size()));
+                if (!results[static_cast<std::size_t>(index)])
+                {
+                    continue;
+                }
+
+                if (mineralLine.m_townHallLocation != sc2::Point2D(0.0f, 0.0f))
+                {
+                    if (sc2::DistanceSquared2D(center, pos) < sc2::DistanceSquared2D(center, mineralLine.m_townHallLocation))
+                    {
+                        mineralLine.m_townHallLocation = pos;
+                    }
+                }
+                else
+                {
+                    mineralLine.m_townHallLocation = pos;
+                }
+            }
         }
 
-        start_index += query_size[i.id];
+        auto p = mineralLine.m_townHallLocation;
+        expansions.emplace_back(std::make_shared<Expansion>(sc2::Point3D(p.x, p.y, mineralLine.GetMineralPatchHeight())));
     }
+
+    CalculateGroundDistances(expansions);
+    CalculateGeysers(expansions);
 
     return expansions;
+}
+
+// ----------------------------------------------------------------------------
+bool IsPointReachable(const sc2::Unit* unit_, const sc2::Point2D& point)
+{
+    if (!gOverseerMap->valid(point))
+    {
+        return false;
+    }
+
+    const auto& tile = gOverseerMap->getTile(point);
+    if (tile->getTileTerrain() == Overseer::TileTerrain::buildAndPath
+     || tile->getTileTerrain() == Overseer::TileTerrain::path
+     || (unit_->is_flying && tile->getTileTerrain() == Overseer::TileTerrain::build)
+     || (unit_->is_flying && tile->getTileTerrain() == Overseer::TileTerrain::flyOnly))
+    {
+        float distance = gAPI->query().PathingDistance(unit_, point);
+        if (distance != 0.0f)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// ----------------------------------------------------------------------------
+void RemovePointsUnreachableByUnit(const sc2::Unit* unit_, std::vector<sc2::Point2D>& points_)
+{
+    std::vector<sc2::QueryInterface::PathingQuery> queries;
+
+    for (auto itr = points_.begin(); itr != points_.end();)
+    {
+        if (!gOverseerMap->valid(*itr))
+        {
+            itr = points_.erase(itr);
+            continue;
+        }
+
+        const auto& tile = gOverseerMap->getTile(*itr);
+        if (tile->getTileTerrain() == Overseer::TileTerrain::buildAndPath
+         || tile->getTileTerrain() == Overseer::TileTerrain::path
+         || (unit_->is_flying && tile->getTileTerrain() == Overseer::TileTerrain::build)
+         || (unit_->is_flying && tile->getTileTerrain() == Overseer::TileTerrain::flyOnly))
+        {
+            sc2::QueryInterface::PathingQuery query;
+            query.start_unit_tag_ = unit_->tag;
+            query.end_ = *itr;
+            queries.emplace_back(query);
+            itr++;
+        }
+        else
+        {
+            itr = points_.erase(itr);
+        }
+    }
+
+    const auto& result = gAPI->query().PathingDistances(queries);
+    size_t i = 0;
+    for (auto itr = points_.begin(); itr != points_.end(); i++)
+    {
+        if (result.at(i) == 0)
+        {
+            itr = points_.erase(itr);
+        }
+        else
+        {
+            itr++;
+        }
+    }
 }
 
 

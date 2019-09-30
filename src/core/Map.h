@@ -25,8 +25,11 @@ public:
 
     explicit Expansion(const sc2::Point3D& town_hall_location_);
 
+    const sc2::Unit* m_townHall;
     sc2::Point3D m_townHallLocation;
+    sc2::Unit::Alliance m_alliance;
     Owner m_owner;
+    std::vector<sc2::Point2D> geysersPosition;
     std::unordered_map<std::shared_ptr<Expansion>, float> m_expansionGroundDistances;
 
 

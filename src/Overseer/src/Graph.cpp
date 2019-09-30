@@ -273,8 +273,9 @@ namespace Overseer{
         }
         g_score[cp_a.getId()] = 0;
 
-        while(!open_set.empty()) {
-            ChokePoint current = getChokePoint(open_set.top().choke_point_id);
+        while(!open_set.empty())
+        {
+            current = getChokePoint(open_set.top().choke_point_id);
             if(current == cp_b) {
                 return reconstructPath(came_from, current);
             }

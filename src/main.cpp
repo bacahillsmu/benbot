@@ -13,7 +13,7 @@
 
 #include <iostream>
 
-
+// I put this in the Preprocesser Definitions: _SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING. Ask Forseth.
 
 #ifdef DEBUG
 int main(int argc, char* argv[])

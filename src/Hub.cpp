@@ -10,33 +10,34 @@
 #include <cmath>
 
 namespace {
-struct SortByDistance {
+struct SortByDistance
+{
     explicit SortByDistance(const sc2::Point3D& point_);
 
-    bool operator()(const Expansion& lhs_, const Expansion& rhs_) const;
+    bool operator()(const std::shared_ptr<Expansion>& lhs_, const std::shared_ptr<Expansion>& rhs_) const;
 
  private:
     sc2::Point3D m_point;
 };
 
 SortByDistance::SortByDistance(const sc2::Point3D& point_):
-    m_point(point_) {
+    m_point(point_)
+{
 }
 
-bool SortByDistance::operator()(const Expansion& lhs_, const Expansion& rhs_) const {
-    return sc2::DistanceSquared2D(lhs_.m_townHallLocation, m_point) <
-        sc2::DistanceSquared2D(rhs_.m_townHallLocation, m_point);
+bool SortByDistance::operator()(const std::shared_ptr<Expansion>& lhs_, const std::shared_ptr<Expansion>& rhs_) const
+{
+    return sc2::DistanceSquared2D(lhs_->m_townHallLocation, m_point) < sc2::DistanceSquared2D(rhs_->m_townHallLocation, m_point);
 }
 
 }  // namespace
 
-Hub::Hub(sc2::Race current_race_, const Expansions& expansions_):
+Hub::Hub(sc2::Race current_race_, Expansions expansions_):
     m_current_race(current_race_),
-    m_expansions(expansions_),
+    m_expansions(std::move(expansions_)),
     m_current_worker_type(sc2::UNIT_TYPEID::INVALID)
 {
-    std::sort(m_expansions.begin(), m_expansions.end(),
-        SortByDistance(gAPI->observer().StartingLocation()));
+    std::sort(m_expansions.begin(), m_expansions.end(), SortByDistance(gAPI->observer().StartingLocation()));
 
     switch (m_current_race)
     {

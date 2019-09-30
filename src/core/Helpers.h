@@ -85,6 +85,11 @@ struct IsFreeGeyser
     bool operator()(const sc2::Unit& unit_) const;
 };
 
+struct IsMineralPatch
+{
+    bool operator()(const sc2::Unit& unit_) const;
+};
+
 struct IsGeyser
 {
     bool operator()(const sc2::Unit& unit_) const;
@@ -140,6 +145,29 @@ struct IsOrdered
 
  private:
     sc2::UNIT_TYPEID m_type;
+};
+
+struct IsWithinDistance
+{
+    explicit IsWithinDistance(const sc2::Point3D& center_, float dist_)
+        :m_center(center_)
+        ,m_distSq(dist_ * dist_)
+        ,m_2d(false)
+    {
+    }
+    explicit IsWithinDistance(const sc2::Point2D& center_, float dist_)
+        :m_center(sc2::Point3D(center_.x, center_.y, 0))
+        ,m_distSq(dist_ * dist_)
+        ,m_2d(true)
+    {
+    }
+
+    bool operator()(const sc2::Unit& unit_) const;
+
+private:
+    sc2::Point3D m_center;
+    float m_distSq;
+    bool m_2d;
 };
 
 // ----------------------------------------------------------------------------

@@ -132,7 +132,8 @@ bool IsCombatUnit::operator()(const sc2::Unit& unit_) const
 }
 
 // ----------------------------------------------------------------------------
-bool IsVisibleMineralPatch::operator()(const sc2::Unit& unit_) const {
+bool IsVisibleMineralPatch::operator()(const sc2::Unit& unit_) const
+{
     return unit_.mineral_contents > 0;
 }
 
@@ -175,6 +176,30 @@ bool IsVisibleGeyser::operator()(const sc2::Unit& unit_) const {
 // ----------------------------------------------------------------------------
 bool IsFreeGeyser::operator()(const sc2::Unit& unit_) const {
     return IsVisibleGeyser()(unit_) && !gHub->IsOccupied(unit_);
+}
+
+// ----------------------------------------------------------------------------
+bool IsMineralPatch::operator()(const sc2::Unit& unit_) const
+{
+    switch (unit_.unit_type.ToType())
+    {
+        case sc2::UNIT_TYPEID::NEUTRAL_BATTLESTATIONMINERALFIELD:
+        case sc2::UNIT_TYPEID::NEUTRAL_BATTLESTATIONMINERALFIELD750:
+        case sc2::UNIT_TYPEID::NEUTRAL_LABMINERALFIELD:
+        case sc2::UNIT_TYPEID::NEUTRAL_LABMINERALFIELD750:
+        case sc2::UNIT_TYPEID::NEUTRAL_MINERALFIELD:
+        case sc2::UNIT_TYPEID::NEUTRAL_MINERALFIELD750:
+        case sc2::UNIT_TYPEID::NEUTRAL_PURIFIERMINERALFIELD:
+        case sc2::UNIT_TYPEID::NEUTRAL_PURIFIERMINERALFIELD750:
+        case sc2::UNIT_TYPEID::NEUTRAL_PURIFIERRICHMINERALFIELD:
+        case sc2::UNIT_TYPEID::NEUTRAL_PURIFIERRICHMINERALFIELD750:
+        case sc2::UNIT_TYPEID::NEUTRAL_RICHMINERALFIELD:
+        case sc2::UNIT_TYPEID::NEUTRAL_RICHMINERALFIELD750:
+            return true;
+
+        default:
+            return false;
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -324,6 +349,17 @@ bool IsOrdered::operator()(const Order& order_) const
 }
 
 // ----------------------------------------------------------------------------
+bool IsWithinDistance::operator()(const sc2::Unit& unit_) const
+{
+    if (m_2d)
+    {
+        return sc2::DistanceSquared2D(m_center, unit_.pos) < m_distSq;
+    }
+
+    return sc2::DistanceSquared3D(m_center, unit_.pos) < m_distSq;
+}
+
+// ----------------------------------------------------------------------------
 HasAddon::HasAddon(sc2::UNIT_TYPEID addon_type_)
     :m_addon_type(addon_type_)
 {
@@ -397,3 +433,5 @@ sc2::Point2D GetTerranAddonPosition(const sc2::Point2D& parent_building_position
     pos.y += ADDON_DISPLACEMENT_IN_Y;
     return pos;
 }
+
+
