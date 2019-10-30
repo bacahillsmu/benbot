@@ -31,15 +31,24 @@ void Builder::OnStep()
     m_current_food = gAPI->observer().GetFoodCap() - m_available_food;
 
     auto it = m_construction_orders.begin();
-    while (it != m_construction_orders.end())
+    if(it != m_construction_orders.end())
     {
-        if (!Build(&(*it)))
+        if(Build(&(*it)))
         {
-            break;
+            it = m_construction_orders.erase(it);
         }
-
-        it = m_construction_orders.erase(it);
     }
+//     while (it != m_construction_orders.end())
+//     {
+//         if (!Build(&(*it)))
+//         {
+//             break;
+//         }
+// 
+//         it = m_construction_orders.erase(it);
+//     }
+
+
 
     it = m_training_orders.begin();
     while (it != m_training_orders.end())
@@ -57,23 +66,23 @@ void Builder::OnStep()
 // ----------------------------------------------------------------------------
 void Builder::ScheduleConstruction(sc2::UNIT_TYPEID id_, bool urgent_)
 {
-    sc2::UnitTypeData structure = gAPI->observer().GetUnitTypeData(id_);
+    sc2::UnitTypeData* structure = gAPI->observer().GetUnitTypeData(id_);
 
     // Prevent deadlock.
-    if (structure.tech_requirement != sc2::UNIT_TYPEID::INVALID
-     && gAPI->observer().CountUnitType(structure.tech_requirement) == 0
-     && CountScheduledStructures(structure.tech_requirement) == 0)
+    if (structure->tech_requirement != sc2::UNIT_TYPEID::INVALID
+     && gAPI->observer().CountUnitType(structure->tech_requirement) == 0
+     && CountScheduledStructures(structure->tech_requirement) == 0)
     {
-        ScheduleConstruction(structure.tech_requirement);
+        ScheduleConstruction(structure->tech_requirement);
     }
 
     if (urgent_)
     {
-        m_construction_orders.emplace_front(structure);
+        m_construction_orders.emplace_front(*structure);
         return;
     }
 
-    m_construction_orders.emplace_back(structure);
+    m_construction_orders.emplace_back(*structure);
 }
 
 // ----------------------------------------------------------------------------
@@ -83,17 +92,17 @@ void Builder::ScheduleUpgrade(sc2::UPGRADE_ID id_)
 }
 
 // ----------------------------------------------------------------------------
-void Builder::ScheduleTraining(sc2::UNIT_TYPEID id_, const sc2::Unit* unit_, bool urgent)
+void Builder::ScheduleTraining(sc2::UNIT_TYPEID id_, WrappedUnit* unit_, bool urgent)
 {
-    auto data = gAPI->observer().GetUnitTypeData(id_);
+    sc2::UnitTypeData* data = gAPI->observer().GetUnitTypeData(id_);
 
     if (urgent)
     {
-        m_training_orders.emplace_front(data, unit_);
+        m_training_orders.emplace_front(*data, unit_);
         return;
     }
 
-    m_training_orders.emplace_back(data, unit_);
+    m_training_orders.emplace_back(*data, unit_);
 }
 
 // ----------------------------------------------------------------------------
@@ -149,7 +158,7 @@ bool Builder::Build(Order* order_)
 {
     if (m_minerals < order_->mineral_cost || m_vespene < order_->vespene_cost)
     {
-        
+        //gHistory.info() << "Failed building: " << order_->name << "because of resources." << std::endl;
         return false;
     }
 
@@ -177,23 +186,28 @@ bool Builder::Build(Order* order_)
 
         if (gAPI->observer().CountUnitsTypes(requirements) == 0)
         {
+            //gHistory.info() << "Failed building: " << order_->name << "because of requirements." << std::endl;
             return false;
         }
     }
 
     if (order_->food_required > 0 && m_available_food < order_->food_required)
     {
+        //gHistory.info() << "Failed building: " << order_->name << "because of food required." << std::endl;
         return false;
     }
 
     if (!blueprint->Build(order_))
     {
+        //gHistory.info() << "Failed building: " << order_->name << "because blueprint could not build." << std::endl;
         return false;
     }
 
     m_minerals       -= order_->mineral_cost;
     m_vespene        -= order_->vespene_cost;
     m_available_food -= order_->food_required;
+
+    gHistory.info() << "Built: " << order_->name << "!" << std::endl;
 
     return true;
 }

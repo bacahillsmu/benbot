@@ -9,7 +9,8 @@
 #include <algorithm>
 #include <cmath>
 
-namespace {
+namespace
+{
 struct SortByDistance
 {
     explicit SortByDistance(const sc2::Point3D& point_);
@@ -32,10 +33,10 @@ bool SortByDistance::operator()(const std::shared_ptr<Expansion>& lhs_, const st
 
 }  // namespace
 
-Hub::Hub(sc2::Race current_race_, Expansions expansions_):
-    m_current_race(current_race_),
-    m_expansions(std::move(expansions_)),
-    m_current_worker_type(sc2::UNIT_TYPEID::INVALID)
+Hub::Hub(sc2::Race current_race_, Expansions expansions_)
+    : m_current_race(current_race_)
+    , m_expansions(std::move(expansions_))
+    , m_current_worker_type(sc2::UNIT_TYPEID::INVALID)
 {
     std::sort(m_expansions.begin(), m_expansions.end(), SortByDistance(gAPI->observer().StartingLocation()));
 
@@ -58,163 +59,82 @@ Hub::Hub(sc2::Race current_race_, Expansions expansions_):
     }
 }
 
-void Hub::OnStep() {
+void Hub::OnStep()
+{
 }
 
-void Hub::OnUnitCreated(const sc2::Unit& unit_) {
-    switch (unit_.unit_type.ToType()) {
-        case sc2::UNIT_TYPEID::PROTOSS_PROBE:
-        case sc2::UNIT_TYPEID::TERRAN_SCV:
-        case sc2::UNIT_TYPEID::ZERG_DRONE:
-            m_free_workers.Add(Worker(unit_));
-            return;
-
-        case sc2::UNIT_TYPEID::ZERG_LARVA:
-            m_larva.Add(GameObject(unit_));
-            return;
-
-        case sc2::UNIT_TYPEID::PROTOSS_ASSIMILATOR:
-        case sc2::UNIT_TYPEID::TERRAN_REFINERY:
-        case sc2::UNIT_TYPEID::ZERG_EXTRACTOR: {
-            Geyser obj(unit_);
-
-            if (m_captured_geysers.Remove(obj))  // might be claimed geyser
-                gHistory.info() << "Release claimed geyser " << std::endl;
-
-            m_captured_geysers.Add(obj);
-            gHistory.info() << "Capture object " <<
-                sc2::UnitTypeToName(unit_.unit_type) << std::endl;
-            return;
-        }
-
-        case sc2::UNIT_TYPEID::PROTOSS_NEXUS:
-        case sc2::UNIT_TYPEID::TERRAN_COMMANDCENTER:
-        case sc2::UNIT_TYPEID::ZERG_HATCHERY:
-            for (auto& i : m_expansions) {
-                if (std::floor(i->m_townHallLocation.x) != std::floor(unit_.pos.x) ||
-                        std::floor(i->m_townHallLocation.y) != std::floor(unit_.pos.y))
-                    continue;
-
-                i->m_owner = Owner::SELF;
-                gHistory.info() << "Capture region: (" <<
-                    unit_.pos.x << ", " << unit_.pos.y <<
-                    ")" << std::endl;
-                return;
-            }
-            return;
-
-        default:
-            return;
-    }
-}
-
-void Hub::OnUnitDestroyed(const sc2::Unit& unit_) {
-    switch (unit_.unit_type.ToType()) {
-        case sc2::UNIT_TYPEID::PROTOSS_PROBE:
-        case sc2::UNIT_TYPEID::TERRAN_SCV:
-        case sc2::UNIT_TYPEID::ZERG_DRONE: {
-            if (m_busy_workers.Remove(Worker(unit_))) {
-                gHistory.info() << "Our busy worker was destroyed" << std::endl;
-                return;
+void Hub::OnUnitCreated(WrappedUnit* unit_)
+{
+    if (IsTownHall()(unit_))
+    {
+        for (auto& i : m_expansions)
+        {
+            if (std::floor(i->m_townHallLocation.x) != std::floor(unit_->pos.x)
+             || std::floor(i->m_townHallLocation.y) != std::floor(unit_->pos.y))
+            {
+                continue;
             }
 
-            m_free_workers.Remove(Worker(unit_));
-            return;
-        }
+            i->m_alliance = sc2::Unit::Alliance::Self;
+            i->m_townHall = unit_;
 
-        case sc2::UNIT_TYPEID::ZERG_LARVA:
-            m_larva.Remove(GameObject(unit_));
-            return;
-
-        case sc2::UNIT_TYPEID::PROTOSS_ASSIMILATOR:
-        case sc2::UNIT_TYPEID::TERRAN_REFINERY:
-        case sc2::UNIT_TYPEID::ZERG_EXTRACTOR: {
-            if (m_captured_geysers.Remove(Geyser(unit_))) {
-                gHistory.info() << "Release object " <<
-                    sc2::UnitTypeToName(unit_.unit_type) << std::endl;
+            if (i->m_alliance != sc2::Unit::Alliance::Self)
+            {
+                gHistory.info() << "Captured region: (" << unit_->pos.x << ", " << unit_->pos.y << ")" << std::endl;
             }
-
-            return;
-        }
-
-        case sc2::UNIT_TYPEID::PROTOSS_NEXUS:
-        case sc2::UNIT_TYPEID::TERRAN_COMMANDCENTER:
-        case sc2::UNIT_TYPEID::TERRAN_ORBITALCOMMAND:
-        case sc2::UNIT_TYPEID::TERRAN_PLANETARYFORTRESS:
-        case sc2::UNIT_TYPEID::ZERG_HATCHERY:
-        case sc2::UNIT_TYPEID::ZERG_HIVE:
-        case sc2::UNIT_TYPEID::ZERG_LAIR:
-            for (auto& i : m_expansions) {
-                if (std::floor(i->m_townHallLocation.x) != std::floor(unit_.pos.x) ||
-                        std::floor(i->m_townHallLocation.y) != std::floor(unit_.pos.y))
-                    continue;
-
-                i->m_owner = Owner::NEUTRAL;
-                gHistory.info() << "Lost region: (" <<
-                    unit_.pos.x << ", " << unit_.pos.y <<
-                    ")" << std::endl;
-                return;
-            }
-            return;
-
-        default:
-            return;
-    }
-}
-
-void Hub::OnUnitIdle(const sc2::Unit& unit_) {
-    switch (unit_.unit_type.ToType()) {
-        case sc2::UNIT_TYPEID::PROTOSS_PROBE:
-        case sc2::UNIT_TYPEID::TERRAN_SCV:
-        case sc2::UNIT_TYPEID::ZERG_DRONE: {
-            if (m_free_workers.Swap(Worker(unit_), m_busy_workers))
-                gHistory.info() << "Our busy worker has finished task" << std::endl;
-
-            return;
-        }
-
-        case sc2::UNIT_TYPEID::ZERG_LARVA: {
-            GameObject obj = GameObject(unit_);
-            if (!m_larva.IsCached(obj)) {
-                m_larva.Add(obj);
-                gHistory.info() << "Picked up an idle larva." << std::endl;
-            }
-
-            return;
-        }
-
-        default:
             break;
+        }
+    }
+    else if (IsRefinery()(unit_))
+    {
+        for (auto& i : m_expansions)
+        {
+            for (const auto& geyser_position : i->geysersPosition)
+            {
+                if (unit_->pos.x == geyser_position.x && unit_->pos.y == geyser_position.y)
+                {
+                    i->refineries.emplace_back(unit_);
+                    return;
+                }
+            }
+        }
     }
 }
 
-bool Hub::IsOccupied(const sc2::Unit& unit_) const {
-    return m_captured_geysers.IsCached(Geyser(unit_));
-}
-
-bool Hub::IsTargetOccupied(const sc2::UnitOrder& order_) const {
-    return m_captured_geysers.IsCached(Geyser(order_));
-}
-
-void Hub::ClaimObject(const sc2::Unit& unit_) {
-    if (IsVisibleGeyser()(unit_)) {
-        m_captured_geysers.Add(Geyser(unit_));
-        gHistory.info() << "Claim object " <<
-            sc2::UnitTypeToName(unit_.unit_type) << std::endl;
+void Hub::OnUnitDestroyed(WrappedUnit* unit_)
+{
+    if (IsTownHall()(unit_))
+    {
+        for (const auto& i : m_expansions)
+        {
+            if (unit_ == i->m_townHall)
+            {
+                i->m_alliance = sc2::Unit::Alliance::Neutral;
+                i->m_townHall = nullptr;
+                gHistory.info() << "We lost region: (" << unit_->pos.x << ", " << unit_->pos.y << ")" << std::endl;
+                break;
+            }
+        }
+    }
+    else if (IsRefinery()(unit_))
+    {
+        for (auto& i : m_expansions)
+        {
+            for (auto it = i->refineries.begin(); it != i->refineries.end(); it++)
+            {
+                if (unit_ == *it)
+                {
+                    i->refineries.erase(it);
+                    return;
+                }
+            }
+        }
     }
 }
 
-sc2::Race Hub::GetCurrentRace() const {
+sc2::Race Hub::GetCurrentRace() const
+{
     return m_current_race;
-}
-
-Worker* Hub::GetClosestFreeWorker(const sc2::Point2D& location_) {
-    Worker* closest_worker = m_free_workers.GetClosestTo(location_);
-    if (!closest_worker)
-        return nullptr;
-
-    m_free_workers.Swap(*closest_worker, m_busy_workers);
-    return &m_busy_workers.Back();
 }
 
 sc2::UNIT_TYPEID Hub::GetCurrentWorkerType() const
@@ -222,64 +142,150 @@ sc2::UNIT_TYPEID Hub::GetCurrentWorkerType() const
     return m_current_worker_type;
 }
 
-bool Hub::AssignBuildingProduction(Order* order_, const sc2::Unit& assignee_) const
+WrappedUnit* Hub::GetFreeBuildingProductionAssignee(const Order *order_, sc2::UNIT_TYPEID building_)
 {
-    if (IsIdleUnit(assignee_.unit_type)(assignee_))
+    if (order_->assignee)
     {
-        order_->assignee = assignee_.tag;
+        if (IsIdleUnit(order_->assignee->unit_type)(order_->assignee))
+        {
+            return order_->assignee;
+        }
+    }
+    else
+    {
+        auto units = gAPI->observer().GetUnits(IsIdleUnit(building_), sc2::Unit::Alliance::Self);
+        if (!units.empty())
+        {
+            return units.front();
+        }
+    }
+    return nullptr;
+}
+
+WrappedUnit* Hub::GetFreeBuildingProductionAssignee(const Order *order_, sc2::UNIT_TYPEID building_, sc2::UNIT_TYPEID addon_requirement_)
+{
+    if (order_->assignee)
+    {
+        return GetFreeBuildingProductionAssignee(order_);
+    }
+
+    auto units = gAPI->observer().GetUnits(
+            MultiFilter(MultiFilter::Selector::And,
+                {
+                    IsIdleUnit(building_),
+                    HasAddon(addon_requirement_)
+                }), sc2::Unit::Alliance::Self);
+
+    if (!units.empty())
+    {
+        return units.front();
+    }
+    return nullptr;
+}
+
+bool Hub::AssignBuildingProduction(Order* order_, WrappedUnit* assignee_) const
+{
+    if (assignee_ && IsIdleUnit(assignee_->unit_type)(assignee_))
+    {
+        order_->assignee = assignee_;
         return true;
     }
     return false;
 }
 
-bool Hub::AssignRefineryConstruction(Order* order_, const sc2::Unit* geyser_) {
-    Worker* worker = GetClosestFreeWorker(geyser_->pos);
+bool Hub::AssignBuildingProduction(Order* order_, sc2::UNIT_TYPEID building_)
+{
+    return AssignBuildingProduction(order_, GetFreeBuildingProductionAssignee(order_, building_));
+}
+
+bool Hub::AssignBuildingProduction(Order* order_, sc2::UNIT_TYPEID building_, sc2::UNIT_TYPEID addon_requirement_)
+{
+    return AssignBuildingProduction(order_, GetFreeBuildingProductionAssignee(order_, building_, addon_requirement_));
+}
+
+bool Hub::AssignRefineryConstruction(Order* order_, WrappedUnit* geyser_)
+{
+    WrappedUnit* unit = GetClosestFreeWorker(geyser_->pos);
+    Worker* worker = (Worker*)unit;
     if (!worker)
+    {
         return false;
+    }
 
     worker->BuildRefinery(order_, geyser_);
-    ClaimObject(*geyser_);
     return true;
 }
 
-bool Hub::AssignBuildTask(Order* order_, const sc2::Point2D& point_) {
-    Worker* worker = GetClosestFreeWorker(point_);
+bool Hub::AssignBuildTask(Order* order_, const sc2::Point2D& point_)
+{
+    WrappedUnit* unit = GetClosestFreeWorker(point_);
+    Worker* worker = (Worker*)unit;
     if (!worker)
+    {
         return false;
+    }
 
     worker->Build(order_, point_);
     return true;
 }
 
-void Hub::AssignVespeneHarvester(const sc2::Unit& refinery_) {
-    Worker* worker = GetClosestFreeWorker(refinery_.pos);
-    if (!worker)
-        return;
-
-    worker->GatherVespene(refinery_);
-}
-
-bool Hub::AssignLarva(Order* order_)
+void Hub::AssignVespeneHarvester(WrappedUnit* refinery_)
 {
-    if (m_larva.Empty())
+    WrappedUnit* unit = GetClosestFreeWorker(refinery_->pos);
+    Worker* worker = (Worker*)unit;
+    if (!worker)
     {
-        return false;
+        return;
     }
 
-    order_->assignee = m_larva.Back().Tag();
-    gAPI->action().Build(*order_);
-
-    m_larva.PopBack();
-    return true;
+    worker->GatherVespene(*refinery_);
 }
 
-const Cache<GameObject>&  Hub::GetLarvas() const
+const Expansions& Hub::GetExpansions() const
 {
-    return m_larva;
+    return m_expansions;
 }
 
-const Expansions& Hub::GetExpansions() const {
-    return m_expansions;
+Expansions Hub::GetOurExpansions() const
+{
+    Expansions expansions;
+
+    // Grab all of our expansions;
+    for (auto& expo : m_expansions)
+    {
+        if (expo->m_alliance == sc2::Unit::Alliance::Self)
+        {
+            expansions.emplace_back(expo);
+        }
+    }
+
+    // Starting from the StartingLocation, sort each expansion, assumed the next closest base to StartingLocation is Natural;
+    auto starting = GetClosestExpansion(gAPI->observer().StartingLocation());
+    std::sort(expansions.begin(),
+              expansions.end(),
+              [&starting](auto& e1, auto& e2)
+    {
+        return starting->distanceTo(e1) < starting->distanceTo(e2);
+    });
+
+    return expansions;
+}
+
+std::shared_ptr<Expansion> Hub::GetClosestExpansion(const sc2::Point2D& location_) const
+{
+    assert(!m_expansions.empty());
+
+    auto closest = m_expansions[0];
+    for (auto& expansion : m_expansions)
+    {
+        if (sc2::DistanceSquared2D(location_, expansion->m_townHallLocation)
+          < sc2::DistanceSquared2D(location_, closest->m_townHallLocation))
+        {
+            closest = expansion;
+        }
+    }
+
+    return closest;
 }
 
 const sc2::Point3D* Hub::GetNextExpansion()
@@ -294,18 +300,54 @@ const sc2::Point3D* Hub::GetNextExpansion()
     }
 
     return nullptr;
+}
 
-//     auto it = std::find_if(m_expansions.begin(), m_expansions.end(),
-//         [](const Expansion& expansion_)
-//         {
-//             return expansion_.m_owner == Owner::NEUTRAL;
-//         });
-// 
-//     if (it == m_expansions.end())
-//         return nullptr;
-// 
-//     it->m_owner = Owner::CONTESTED;
-//     return &(it->m_townHallLocation);
+int Hub::GetOurExpansionCount() const
+{
+    int count = 0;
+    for (auto& expo : gHub->GetExpansions())
+    {
+        if (expo->m_alliance == sc2::Unit::Alliance::Self)
+        {
+            count++;
+        }
+    }
+    return count;
+}
+
+void Hub::RequestScan(const sc2::Point2D& pos)
+{
+    if (gAPI->observer().GetGameLoop() == m_lastStepScan)
+    {
+        return;
+    }
+
+    if (gAPI->observer().GetVisibility(pos) == sc2::Visibility::Visible)
+    {
+        auto size = gAPI->observer().GetUnits(
+            MultiFilter(MultiFilter::Selector::And,
+            {
+                IsWithinDistance(pos, API::OrbitalScanRadius),
+                CloakState(sc2::Unit::Cloaked)
+            }),
+            sc2::Unit::Alliance::Enemy).size();
+
+        if (size == 0)
+        {
+            return;
+        }
+    }
+
+    auto orbitals = gAPI->observer().GetUnits(IsUnit(sc2::UNIT_TYPEID::TERRAN_ORBITALCOMMAND), sc2::Unit::Alliance::Self);
+    for (auto& orbital : orbitals)
+    {
+        if (orbital->energy >= API::OrbitalScanCost)
+        {
+            gAPI->action().Cast(*orbital, sc2::ABILITY_ID::EFFECT_SCAN, pos);
+            m_lastStepScan = gAPI->observer().GetGameLoop();
+            break;
+        }
+    }
 }
 
 std::unique_ptr<Hub> gHub;

@@ -41,9 +41,9 @@ void Strategy::OnStep(Builder*)
     m_attack_limit = std::min<float>(m_attack_limit * 1.5f, 170.0f);
 }
 
-void Strategy::OnUnitCreated(const sc2::Unit* unit_, Builder*)
+void Strategy::OnUnitCreated(WrappedUnit* unit_, Builder*)
 {
-    if (!IsCombatUnit()(*unit_))
+    if (!IsCombatUnit()(unit_))
     {
         return;
     }

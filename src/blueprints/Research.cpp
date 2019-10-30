@@ -6,21 +6,27 @@
 #include "core/API.h"
 #include "core/Helpers.h"
 
-Research::Research(sc2::UNIT_TYPEID who_builds_): m_who_builds(who_builds_) {
+Research::Research(sc2::UNIT_TYPEID who_builds_)
+    : m_who_builds(who_builds_)
+{
 }
 
-bool Research::Build(Order* order_) {
-    auto producers = gAPI->observer().GetUnits(IsIdleUnit(m_who_builds));
+bool Research::CanBeBuilt(const Order* order_)
+{
+    order_;
+    return true;
+}
 
-    // NOTE (alkurbatov): Queue upgrades if there is no free structures left
-    // in order to avoid blocking of the main queue.
-    if (producers.Empty())
-        producers = gAPI->observer().GetUnits(IsUnit(m_who_builds));
+bool Research::Build(Order* order_)
+{
+    WrappedUnits producers = gAPI->observer().GetUnits(sc2::Unit::Alliance::Self);
 
-    if (producers.Empty())
+    if (producers.empty())
+    {
         return false;
+    }
 
-    order_->assignee = producers().front()->tag;
+    order_->assignee = producers.front();
     gAPI->action().Build(*order_);
 
     return true;

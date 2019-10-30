@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "core/WrappedUnit.hpp"
 #include "core/Map.h"
 #include "objects/Geyser.h"
 #include "objects/Worker.h"
@@ -110,34 +111,39 @@ struct Hub
     Hub(sc2::Race current_race_, Expansions expansions_);
 
     void OnStep();
-    void OnUnitCreated(const sc2::Unit& unit_);
-    void OnUnitDestroyed(const sc2::Unit& unit_);
-    void OnUnitIdle(const sc2::Unit& unit_);
-    bool IsOccupied(const sc2::Unit& unit_) const;
-    bool IsTargetOccupied(const sc2::UnitOrder& order_) const;
-    void ClaimObject(const sc2::Unit& unit_);
+    void OnUnitCreated(WrappedUnit* unit_);
+    void OnUnitDestroyed(WrappedUnit* unit_);
+
     sc2::Race GetCurrentRace() const;
-    Worker* GetClosestFreeWorker(const sc2::Point2D& location_);
+    //Worker* GetClosestFreeWorker(const sc2::Point2D& location_);
     sc2::UNIT_TYPEID GetCurrentWorkerType() const;
-    bool AssignBuildingProduction(Order* order_, const sc2::Unit& assignee_) const;
-    bool AssignRefineryConstruction(Order* order_, const sc2::Unit* geyser_);
+
+    WrappedUnit* GetFreeBuildingProductionAssignee(const Order *order_, sc2::UNIT_TYPEID building_ = sc2::UNIT_TYPEID::INVALID);
+    WrappedUnit* GetFreeBuildingProductionAssignee(const Order *order_, sc2::UNIT_TYPEID building_, sc2::UNIT_TYPEID addon_requirement_);
+
+
+
+    bool AssignBuildingProduction(Order* order_, WrappedUnit* assignee_) const;
+    bool AssignBuildingProduction(Order* order_, sc2::UNIT_TYPEID building_ = sc2::UNIT_TYPEID::INVALID);
+    bool AssignBuildingProduction(Order* order_, sc2::UNIT_TYPEID building_, sc2::UNIT_TYPEID addon_requirement_);
+
+    bool AssignRefineryConstruction(Order* order_, WrappedUnit* geyser_);
     bool AssignBuildTask(Order* order_, const sc2::Point2D& point_);
-    void AssignVespeneHarvester(const sc2::Unit& refinery_);
-    bool AssignLarva(Order* order_);
-    const Cache<GameObject>&  GetLarvas() const;
+    void AssignVespeneHarvester(WrappedUnit* refinery_);
     const Expansions& GetExpansions() const;
+    Expansions GetOurExpansions() const;
+    std::shared_ptr<Expansion> GetClosestExpansion(const sc2::Point2D& location_) const;
     const sc2::Point3D* GetNextExpansion();
+    int GetOurExpansionCount() const;
+    void RequestScan(const sc2::Point2D& pos);
 
  private:
+
     sc2::Race m_current_race;
     Expansions m_expansions;
     sc2::UNIT_TYPEID m_current_worker_type;
 
-    Cache<Geyser> m_captured_geysers;
-
-    Cache<Worker> m_busy_workers;
-    Cache<Worker> m_free_workers;
-    Cache<GameObject> m_larva;
+    uint32_t m_lastStepScan;
 };
 
 extern std::unique_ptr<Hub> gHub;

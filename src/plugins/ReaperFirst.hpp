@@ -11,11 +11,8 @@ struct ReaperFirst : Plugin
 {
 	ReaperFirst();
 
-	void OnStep(Builder*) final;
-	void OnUnitCreated(const sc2::Unit* unit_, Builder* builder_) final;
-	void OnUnitIdle(const sc2::Unit* unit_, Builder* builder_) final;
-	void OnUnitDestroyed(const sc2::Unit* unit_, Builder*) final;
-
+	void OnUnitIdle(WrappedUnit* unit_, Builder* builder_) final;
+	
 private:
 	enum State 
 	{

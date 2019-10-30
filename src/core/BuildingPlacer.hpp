@@ -12,9 +12,9 @@ class BuildingPlacer
 public:
 
 	void OnGameStart();
-	void OnUnitCreated(const sc2::Unit& unit_);
-	void OnUnitDestroyed(const sc2::Unit& unit_);
-	void OnUnitEnterVision(const sc2::Unit& unit_);	
+	void OnUnitCreated(WrappedUnit* unit_);
+	void OnUnitDestroyed(WrappedUnit* unit_);
+	void OnUnitEnterVision(WrappedUnit* unit_);
 
 	// Point Hash;
 	struct Point2DIHasher
@@ -58,11 +58,11 @@ public:
 
 	sc2::Point3D ReserveBuildingSpace(const Order& order_, bool reserveAddonSpace_ = false);
 	void FreeReservedBuildingSpace(const sc2::Point3D& buildingPosition_, const sc2::UNIT_TYPEID& buildingType_, bool includeAddonSpace_ = false);
-	bool IsGeyserUnoccupied(const sc2::Unit& geyser_) const;
-	bool ReserveGeyser(const sc2::Unit& geyser_);
+	bool IsGeyserUnoccupied(WrappedUnit* geyser_) const;
+	bool ReserveGeyser(WrappedUnit* geyser_);
 	
-	void AddBuildingToOccupiedTiles(const sc2::Unit& unit_, TileOccupationStatus tileOccupationStatus_);
-	void RemoveBuildingFromOccupiedTiles(const sc2::Unit& unit_);
+	void AddBuildingToOccupiedTiles(WrappedUnit* unit_, TileOccupationStatus tileOccupationStatus_);
+	void RemoveBuildingFromOccupiedTiles(WrappedUnit* unit_);
 	bool IsBuildSpaceFree(const sc2::Point2DI& bottomLeftTilePoint_, int width_, int height_, const std::unordered_map<sc2::Point2DI, std::shared_ptr<Overseer::Tile>, Point2DIHasher>& buildableTiles_) const;
 	void MarkTilesAsReserved(const sc2::Point2DI& bottomLeftTilePoint_, int width_, int height_);
 	

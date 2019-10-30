@@ -15,6 +15,21 @@
 
 // I put this in the Preprocesser Definitions: _SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING. Ask Forseth.
 
+// class Human : public sc2::Agent
+// {
+// public:
+//     void OnGameStart() final
+//     {
+//         Debug()->DebugTextOut("Human");
+//         Debug()->SendDebug();
+// 
+//     }
+//     void OnStep()
+//     {
+//         Control()->GetObservation();
+//     }
+// };
+
 #ifdef DEBUG
 int main(int argc, char* argv[])
 {
@@ -34,15 +49,18 @@ int main(int argc, char* argv[])
     coordinator.LoadSettings(argc, argv);
 
     Dispatcher bot("TrainingDummy");
+    //Human human;
     coordinator.SetParticipants({
         CreateParticipant(sc2::Race::Terran, &bot),
+        //CreateParticipant(sc2::Race::Zerg, &human),
         CreateComputer(sc2::Race::Random, sc2::Difficulty::Hard)
     });
 
     coordinator.LaunchStarcraft();
     coordinator.StartGame(argv[1]);
 
-    while (coordinator.Update()) {
+    while (coordinator.Update())
+    {
         // NOTE (alkurbatov): Slow down game speed for better look & feel
         // while making experiments. Uncomment this if needed.
         // sc2::SleepFor(15);

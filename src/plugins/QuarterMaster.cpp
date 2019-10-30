@@ -124,7 +124,7 @@ void QuarterMaster::OnStep(Builder* builder_)
         return;
     }
 
-    auto units = gAPI->observer().GetUnits();
+    WrappedUnits units = gAPI->observer().GetUnits(sc2::Unit::Alliance::Self);
     const std::list<Order>& construction_orders = builder_->GetConstructionOrders();
     const std::list<Order>& training_orders = builder_->GetTrainingOrders();
 
@@ -139,8 +139,8 @@ void QuarterMaster::OnStep(Builder* builder_)
 
     float expected_supply =
         std::accumulate(
-            units().begin(),
-            units().end(),
+            units.begin(),
+            units.end(),
             0.0f,
             CalcSupplies())
         + std::accumulate(
@@ -186,7 +186,7 @@ void QuarterMaster::OnStep(Builder* builder_)
 }
 
 // ----------------------------------------------------------------------------
-void QuarterMaster::OnUnitCreated(const sc2::Unit* unit_,  Builder*)
+void QuarterMaster::OnUnitCreated(WrappedUnit* unit_,  Builder*)
 {
     if (unit_->unit_type == sc2::UNIT_TYPEID::TERRAN_SUPPLYDEPOT ||
         unit_->unit_type == sc2::UNIT_TYPEID::ZERG_OVERLORD      ||

@@ -16,9 +16,9 @@ void RepairMan::OnStep(Builder*)
     // FIXME (alkurbatov): Put buildings repair code here.
 }
 
-void RepairMan::OnUnitDestroyed(const sc2::Unit* unit_, Builder* builder_)
+void RepairMan::OnUnitDestroyed(WrappedUnit* unit_, Builder* builder_)
 {
-    if (IsCombatUnit()(*unit_))
+    if (IsCombatUnit()(unit_))
     {
         return;
     }

@@ -6,6 +6,8 @@
 
 #include "Blueprint.h"
 
-struct Refinery: Blueprint {
+struct Refinery: Blueprint
+{
+    bool CanBeBuilt(const Order* order_) final;
     bool Build(Order* order_) final;
 };

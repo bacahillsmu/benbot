@@ -108,11 +108,10 @@ std::shared_ptr<Blueprint> Blueprint::Plot(sc2::ABILITY_ID ability_)
         {
             return std::make_shared<Research>(sc2::UNIT_TYPEID::TERRAN_GHOSTACADEMY);
         }
-
-        case sc2::ABILITY_ID::BUILD_COMMANDCENTER:
-        {
-            return std::make_shared<TownHall>();
-        }
+        
+        case sc2::ABILITY_ID::MORPH_ORBITALCOMMAND:
+        case sc2::ABILITY_ID::MORPH_PLANETARYFORTRESS:
+            return std::make_shared<Mutation>();
 
         default:
         {

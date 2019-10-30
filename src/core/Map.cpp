@@ -79,6 +79,7 @@ sc2::Point2D MineralLine::Center() const
     return sc2::Point2D(centerX, centerY);
 }
 
+// ----------------------------------------------------------------------------
 void CalculateGroundDistances(Expansions& expansions_)
 {
     for(auto& expansion : expansions_)
@@ -117,14 +118,15 @@ void CalculateGroundDistances(Expansions& expansions_)
 }
 
 // ----------------------------------------------------------------------------
-Units GetMineralPatchesAtBase(const sc2::Point3D& baseLocation_)
+WrappedUnits GetMineralPatchesAtBase(const sc2::Point3D& baseLocation_)
 {
     return gAPI->observer().GetUnits(
         MultiFilter(MultiFilter::Selector::And,
         {
                 IsMineralPatch(),
                 IsWithinDistance(baseLocation_, 15.0f)
-        }));
+        }),
+        sc2::Unit::Alliance::Self);
 }
 
 // ----------------------------------------------------------------------------
@@ -132,14 +134,14 @@ sc2::Point3D GetCenterBehindMinerals(const sc2::Point3D& baseLocation_)
 {
     auto mineralPatches = GetMineralPatchesAtBase(baseLocation_);
 
-    if (mineralPatches().empty())
+    if (mineralPatches.empty())
     {
         return baseLocation_;
     }
 
     sc2::Point3D resourceCenter;
     float maxDist = 0;
-    for (const auto& mineralPatch : mineralPatches())
+    for (const auto& mineralPatch : mineralPatches)
     {
         resourceCenter += mineralPatch->pos;
         float dist = sc2::Distance2D(mineralPatch->pos, baseLocation_);
@@ -149,8 +151,8 @@ sc2::Point3D GetCenterBehindMinerals(const sc2::Point3D& baseLocation_)
         }
     }
 
-    resourceCenter.x /= (float)mineralPatches().size();
-    resourceCenter.y /= (float)mineralPatches().size();
+    resourceCenter.x /= (float)mineralPatches.size();
+    resourceCenter.y /= (float)mineralPatches.size();
     resourceCenter.z = baseLocation_.z;
 
     // Get direction vector
@@ -166,19 +168,19 @@ std::vector<MineralLine> GetMineralLines()
     auto mineralPatches = gAPI->observer().GetUnits(
         [](const auto& unit)
         {
-            return unit.unit_type == sc2::UNIT_TYPEID::NEUTRAL_MINERALFIELD
-                || unit.unit_type == sc2::UNIT_TYPEID::NEUTRAL_MINERALFIELD750
-                || unit.unit_type == sc2::UNIT_TYPEID::NEUTRAL_RICHMINERALFIELD
-                || unit.unit_type == sc2::UNIT_TYPEID::NEUTRAL_RICHMINERALFIELD750
-                || unit.unit_type == sc2::UNIT_TYPEID::NEUTRAL_PURIFIERMINERALFIELD
-                || unit.unit_type == sc2::UNIT_TYPEID::NEUTRAL_PURIFIERMINERALFIELD750
-                || unit.unit_type == sc2::UNIT_TYPEID::NEUTRAL_PURIFIERRICHMINERALFIELD
-                || unit.unit_type == sc2::UNIT_TYPEID::NEUTRAL_PURIFIERRICHMINERALFIELD750
-                || unit.unit_type == sc2::UNIT_TYPEID::NEUTRAL_LABMINERALFIELD
-                || unit.unit_type == sc2::UNIT_TYPEID::NEUTRAL_LABMINERALFIELD750
-                || unit.unit_type == sc2::UNIT_TYPEID::NEUTRAL_BATTLESTATIONMINERALFIELD
-                || unit.unit_type == sc2::UNIT_TYPEID::NEUTRAL_BATTLESTATIONMINERALFIELD750;
-        });
+            return unit->unit_type == sc2::UNIT_TYPEID::NEUTRAL_MINERALFIELD
+                || unit->unit_type == sc2::UNIT_TYPEID::NEUTRAL_MINERALFIELD750
+                || unit->unit_type == sc2::UNIT_TYPEID::NEUTRAL_RICHMINERALFIELD
+                || unit->unit_type == sc2::UNIT_TYPEID::NEUTRAL_RICHMINERALFIELD750
+                || unit->unit_type == sc2::UNIT_TYPEID::NEUTRAL_PURIFIERMINERALFIELD
+                || unit->unit_type == sc2::UNIT_TYPEID::NEUTRAL_PURIFIERMINERALFIELD750
+                || unit->unit_type == sc2::UNIT_TYPEID::NEUTRAL_PURIFIERRICHMINERALFIELD
+                || unit->unit_type == sc2::UNIT_TYPEID::NEUTRAL_PURIFIERRICHMINERALFIELD750
+                || unit->unit_type == sc2::UNIT_TYPEID::NEUTRAL_LABMINERALFIELD
+                || unit->unit_type == sc2::UNIT_TYPEID::NEUTRAL_LABMINERALFIELD750
+                || unit->unit_type == sc2::UNIT_TYPEID::NEUTRAL_BATTLESTATIONMINERALFIELD
+                || unit->unit_type == sc2::UNIT_TYPEID::NEUTRAL_BATTLESTATIONMINERALFIELD750;
+        }, sc2::Unit::Neutral);
 
     std::vector<MineralLine> mineralLines;
     mineralLines.reserve(16);
@@ -441,6 +443,30 @@ bool IsPointReachable(const sc2::Unit* unit_, const sc2::Point2D& point)
      || tile->getTileTerrain() == Overseer::TileTerrain::path
      || (unit_->is_flying && tile->getTileTerrain() == Overseer::TileTerrain::build)
      || (unit_->is_flying && tile->getTileTerrain() == Overseer::TileTerrain::flyOnly))
+    {
+        float distance = gAPI->query().PathingDistance(unit_, point);
+        if (distance != 0.0f)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// ----------------------------------------------------------------------------
+bool IsPointReachable(const WrappedUnit* unit_, const sc2::Point2D& point)
+{
+    if (!gOverseerMap->valid(point))
+    {
+        return false;
+    }
+
+    const auto& tile = gOverseerMap->getTile(point);
+    if (tile->getTileTerrain() == Overseer::TileTerrain::buildAndPath
+    || (tile->getTileTerrain() == Overseer::TileTerrain::path)
+    || (unit_->is_flying && tile->getTileTerrain() == Overseer::TileTerrain::build)
+    || (unit_->is_flying && tile->getTileTerrain() == Overseer::TileTerrain::flyOnly))
     {
         float distance = gAPI->query().PathingDistance(unit_, point);
         if (distance != 0.0f)

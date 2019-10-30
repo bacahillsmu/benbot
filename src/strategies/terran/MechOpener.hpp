@@ -6,7 +6,10 @@
 
 #include "Builder.h"
 #include "strategies/Strategy.h"
+#include "BrainTree/BrainTree.h"
+#include "BrainTree/Action.hpp"
 
+#include "plugins/micro/MicroPlugin.h"
 
 struct MechOpener : Strategy
 {
@@ -14,12 +17,14 @@ struct MechOpener : Strategy
 
 	void OnStep(Builder* builder_) final;
 	void OnGameStart(Builder* builder_) final;
-	void OnUnitIdle(const sc2::Unit* unit_, Builder* builder_) final;
-	void OnUnitCreated(const sc2::Unit* unit_, Builder* builder_) final;
+	void OnUnitIdle(WrappedUnit* unit_, Builder* builder_) final;
+	void OnUnitCreated(WrappedUnit* unit_, Builder* builder_) final;
+
+	//void OnCombatStep(const Units& enemies, const Units& allies) override;
 
 private:
 
-	void BuildMarines(const sc2::Unit* unit_, Builder* builder_);
+	void BuildMarines(WrappedUnit* unit_, Builder* builder_);
 
 	enum State
 	{
@@ -30,6 +35,8 @@ private:
 	};
 
 	State m_state;
+
+	BrainTree::BehaviorTree tree;
 
 	bool m_buildMarines = false;
 

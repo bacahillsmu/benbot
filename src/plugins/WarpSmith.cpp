@@ -16,9 +16,9 @@ typedef std::queue<sc2::Unit> targets_t;
 targets_t PickTargets()
 {
     targets_t targets;
-    auto units = gAPI->observer().GetUnits();
+    WrappedUnits units = gAPI->observer().GetUnits();
 
-    for (const auto& i : units())
+    for (const auto& i : units)
     {
         if (i->unit_type != sc2::UNIT_TYPEID::PROTOSS_CYBERNETICSCORE  &&
             i->unit_type != sc2::UNIT_TYPEID::PROTOSS_TWILIGHTCOUNCIL  &&

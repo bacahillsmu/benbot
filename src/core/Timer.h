@@ -8,10 +8,11 @@
 
 #include <chrono>
 
-struct Timer {
+struct Timer
+{
     void Start();
 
-    void Finish();
+    float Finish();
 
  private:
     std::chrono::time_point<std::chrono::high_resolution_clock> m_start;

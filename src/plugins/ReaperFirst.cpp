@@ -18,29 +18,7 @@ ReaperFirst::ReaperFirst()
 }
 
 // ----------------------------------------------------------------------------
-void ReaperFirst::OnStep(Builder*)
-{
-    if(m_state == State::MICRO_REAPER)
-    {
-        //const auto reaper = gAPI->observer().GetUnit(m_reaper);
-
-    }
-    else if(m_state == State::HEAL_REAPER)
-    {
-        //const auto reaper = gAPI->observer().GetUnit(m_reaper);
-
-    }
-}
-
-// ----------------------------------------------------------------------------
-void ReaperFirst::OnUnitCreated(const sc2::Unit* unit_, Builder* builder_)
-{
-    unit_;
-    builder_;
-}
-
-// ----------------------------------------------------------------------------
-void ReaperFirst::OnUnitIdle(const sc2::Unit* unit_, Builder* builder_)
+void ReaperFirst::OnUnitIdle(WrappedUnit* unit_, Builder* builder_)
 {
     if (m_state == State::WAIT_BARRACKS)
     {
@@ -61,25 +39,6 @@ void ReaperFirst::OnUnitIdle(const sc2::Unit* unit_, Builder* builder_)
 
         gHistory.info() << "ReaperFirst: Reaper was just finished. Sending Reaper to Enemy Start Location." << std::endl;
 
-        m_reaper = unit_->tag;
-        sc2::Units reapers;
-        reapers.push_back(unit_);
-        auto targets = gAPI->observer().GameInfo().enemy_start_locations;
-        gAPI->action().Attack(reapers, targets.front());
         m_state = State::MICRO_REAPER;
-    }
-}
-
-// ----------------------------------------------------------------------------
-void ReaperFirst::OnUnitDestroyed(const sc2::Unit* unit_, Builder*)
-{
-    if(m_state == State::FINISHED)
-    {
-        return;
-    }
-
-    if(unit_->unit_type.ToType() == sc2::UNIT_TYPEID::TERRAN_REAPER)
-    {
-        m_state = State::FINISHED;
     }
 }

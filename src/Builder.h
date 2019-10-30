@@ -11,16 +11,18 @@
 #include <sc2api/sc2_typeenums.h>
 #include <sc2api/sc2_unit.h>
 
+class WrappedUnit;
+
 struct Builder
 {
     Builder();
 
     void OnStep();
-    void OnUnitCreated(const sc2::Unit& unit_);
+    //void OnUnitCreated(const sc2::Unit& unit_);
 
     void ScheduleConstruction(sc2::UNIT_TYPEID id_, bool urgent_ = false);
     void ScheduleUpgrade(sc2::UPGRADE_ID id_);
-    void ScheduleTraining(sc2::UNIT_TYPEID id_, const sc2::Unit* unit_ = nullptr, bool urgent = false);
+    void ScheduleTraining(sc2::UNIT_TYPEID id_, WrappedUnit* unit_ = nullptr, bool urgent = false);
     void ScheduleOrders(const std::vector<Order>& orders_);
 
     const std::list<Order>& GetConstructionOrders() const;

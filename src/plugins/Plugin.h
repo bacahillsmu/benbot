@@ -4,9 +4,12 @@
 
 #pragma once
 
-#include "Builder.h"
+//#include "Builder.h"
 
 #include <sc2api/sc2_unit.h>
+
+struct Builder;
+class WrappedUnit;
 
 struct Plugin
 {
@@ -19,13 +22,13 @@ struct Plugin
     virtual void OnStep(Builder*) {
     }
 
-    virtual void OnUnitCreated(const sc2::Unit*, Builder*) {
+    virtual void OnUnitCreated(WrappedUnit*, Builder*) {
     }
 
-    virtual void OnUnitDestroyed(const sc2::Unit*, Builder*) {
+    virtual void OnUnitDestroyed(WrappedUnit*, Builder*) {
     }
 
-    virtual void OnUnitIdle(const sc2::Unit*, Builder*) {
+    virtual void OnUnitIdle(WrappedUnit*, Builder*) {
     }
 
     virtual void OnUpgradeCompleted(sc2::UpgradeID) {

@@ -6,15 +6,47 @@
 #include "Refinery.h"
 #include "core/API.h"
 #include "core/Helpers.h"
+#include "core/BuildingPlacer.hpp"
+
+bool Refinery::CanBeBuilt(const Order* order_)
+{
+    order_;
+    return true;
+}
 
 bool Refinery::Build(Order* order_)
 {
-    auto geysers = gAPI->observer().GetUnits(IsFreeGeyser(),
-        sc2::Unit::Alliance::Neutral);
+    WrappedUnits geysers = gAPI->observer().GetUnits(IsFreeGeyser(), sc2::Unit::Alliance::Neutral);
 
-    auto geyser = geysers.GetClosestUnit(gAPI->observer().StartingLocation());
-    if (!geyser)
-        return false;
+    for (auto& expansion : gHub->GetOurExpansions())
+    {
+        for (auto& geyserPosition : expansion->geysersPosition)
+        {
+            WrappedUnit* geyser = geysers.GetClosestUnit(geyserPosition);
 
-    return gHub->AssignRefineryConstruction(order_, geyser);
+            if (geyser->vespene_contents > 0
+             && gBuildingPlacer->ReserveGeyser(geyser))
+            {
+                WrappedUnit* unit = GetClosestFreeWorker(geyser->pos);
+                Worker* worker = (Worker*)unit;
+
+                if (!worker)
+                {
+                    WrappedUnit* gasUnit = GetClosestFreeWorker(geyser->pos, true);
+                    worker = (Worker*)gasUnit;
+                }
+
+                if (worker)
+                {
+                    worker->BuildRefinery(order_, geyser);
+                    return true;
+                }
+                else
+                {
+                    assert(false && "Refinery space reserved but no free worker was found!");
+                }
+            }
+        }
+    }
+    return false;
 }

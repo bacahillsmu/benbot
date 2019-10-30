@@ -8,6 +8,7 @@
 #include "blueprints/Unit.h"
 #include "core/API.h"
 
+
 #include <algorithm>
 #include <vector>
 
@@ -18,9 +19,9 @@ IsUnit::IsUnit(sc2::UNIT_TYPEID type_):
 }
 
 // ----------------------------------------------------------------------------
-bool IsUnit::operator()(const sc2::Unit& unit_) const
+bool IsUnit::operator()(const WrappedUnit* unit_) const
 {
-    return unit_.unit_type == m_type && unit_.build_progress >= 1.0f;
+    return unit_->unit_type == m_type && unit_->build_progress >= 1.0f;
 }
 
 // ----------------------------------------------------------------------------
@@ -31,17 +32,17 @@ IsIdleUnit::IsIdleUnit(sc2::UNIT_TYPEID type_, bool non_full_reactor_idle /*= tr
 }
 
 // ----------------------------------------------------------------------------
-bool IsIdleUnit::operator()(const sc2::Unit& unit_) const
+bool IsIdleUnit::operator()(const WrappedUnit* unit_) const
 {
     if (IsUnit(m_type)(unit_))
     {
         if (m_non_full_reactor_idle && HasAddon(sc2::UNIT_TYPEID::TERRAN_REACTOR)(unit_))
         {
-            return unit_.orders.size() < 2;
+            return unit_->NumberOfOrders() < 2;
         }
         else
         {
-            return unit_.orders.empty();
+            return unit_->IsIdle();
         }
     }
 
@@ -55,15 +56,15 @@ OneOfUnits::OneOfUnits(const std::set<sc2::UNIT_TYPEID>& types_):
 }
 
 // ----------------------------------------------------------------------------
-bool OneOfUnits::operator()(const sc2::Unit& unit_) const
+bool OneOfUnits::operator()(const WrappedUnit* unit_) const
 {
-    return unit_.build_progress == 1.0f && m_types.find(unit_.unit_type) != m_types.end();
+    return unit_->build_progress == 1.0f && m_types.find(unit_->unit_type) != m_types.end();
 }
 
 // ----------------------------------------------------------------------------
-bool IsCombatUnit::operator()(const sc2::Unit& unit_) const
+bool IsCombatUnit::operator()(const WrappedUnit* unit_) const
 {
-    switch (unit_.unit_type.ToType())
+    switch (unit_->unit_type.ToType())
     {
        case sc2::UNIT_TYPEID::TERRAN_BANSHEE:
        case sc2::UNIT_TYPEID::TERRAN_CYCLONE:
@@ -132,14 +133,14 @@ bool IsCombatUnit::operator()(const sc2::Unit& unit_) const
 }
 
 // ----------------------------------------------------------------------------
-bool IsVisibleMineralPatch::operator()(const sc2::Unit& unit_) const
+bool IsVisibleMineralPatch::operator()(const WrappedUnit* unit_) const
 {
-    return unit_.mineral_contents > 0;
+    return unit_->mineral_contents > 0;
 }
 
 // ----------------------------------------------------------------------------
-bool IsFoggyResource::operator()(const sc2::Unit& unit_) const {
-    switch (unit_.unit_type.ToType()) {
+bool IsFoggyResource::operator()(const WrappedUnit* unit_) const {
+    switch (unit_->unit_type.ToType()) {
         // Mineral types.
         case sc2::UNIT_TYPEID::NEUTRAL_BATTLESTATIONMINERALFIELD750:
         case sc2::UNIT_TYPEID::NEUTRAL_BATTLESTATIONMINERALFIELD:
@@ -161,7 +162,7 @@ bool IsFoggyResource::operator()(const sc2::Unit& unit_) const {
         case sc2::UNIT_TYPEID::NEUTRAL_PURIFIERVESPENEGEYSER:
         case sc2::UNIT_TYPEID::NEUTRAL_SHAKURASVESPENEGEYSER:
         case sc2::UNIT_TYPEID::NEUTRAL_RICHVESPENEGEYSER:
-            return unit_.display_type != sc2::Unit::DisplayType::Visible;
+            return unit_->display_type != sc2::Unit::DisplayType::Visible;
 
         default:
             return false;
@@ -169,19 +170,21 @@ bool IsFoggyResource::operator()(const sc2::Unit& unit_) const {
 }
 
 // ----------------------------------------------------------------------------
-bool IsVisibleGeyser::operator()(const sc2::Unit& unit_) const {
-    return unit_.vespene_contents > 0;
-}
-
-// ----------------------------------------------------------------------------
-bool IsFreeGeyser::operator()(const sc2::Unit& unit_) const {
-    return IsVisibleGeyser()(unit_) && !gHub->IsOccupied(unit_);
-}
-
-// ----------------------------------------------------------------------------
-bool IsMineralPatch::operator()(const sc2::Unit& unit_) const
+bool IsVisibleGeyser::operator()(const sc2::Unit* unit_) const
 {
-    switch (unit_.unit_type.ToType())
+    return unit_->vespene_contents > 0;
+}
+
+// ----------------------------------------------------------------------------
+bool IsFreeGeyser::operator()(const WrappedUnit* unit_) const
+{
+    return IsVisibleGeyser()(unit_) /*&& !gHub->IsOccupied(*unit_)*/;
+}
+
+// ----------------------------------------------------------------------------
+bool IsMineralPatch::operator()(const WrappedUnit* unit_) const
+{
+    switch (unit_->unit_type.ToType())
     {
         case sc2::UNIT_TYPEID::NEUTRAL_BATTLESTATIONMINERALFIELD:
         case sc2::UNIT_TYPEID::NEUTRAL_BATTLESTATIONMINERALFIELD750:
@@ -203,9 +206,9 @@ bool IsMineralPatch::operator()(const sc2::Unit& unit_) const
 }
 
 // ----------------------------------------------------------------------------
-bool IsGeyser::operator()(const sc2::Unit& unit_) const
+bool IsGeyser::operator()(const WrappedUnit* unit_) const
 {
-    switch (unit_.unit_type.ToType())
+    switch (unit_->unit_type.ToType())
     {
         case sc2::UNIT_TYPEID::NEUTRAL_VESPENEGEYSER:
         case sc2::UNIT_TYPEID::NEUTRAL_PROTOSSVESPENEGEYSER:
@@ -220,78 +223,59 @@ bool IsGeyser::operator()(const sc2::Unit& unit_) const
 }
 
 // ----------------------------------------------------------------------------
-bool IsRefinery::operator()(const sc2::Unit& unit_) const
+bool IsRefinery::operator()(const WrappedUnit* unit_) const
 {
-    if (unit_.build_progress != 1.0f)
-        return false;
-
-    return unit_.unit_type == sc2::UNIT_TYPEID::PROTOSS_ASSIMILATOR ||
-        unit_.unit_type == sc2::UNIT_TYPEID::ZERG_EXTRACTOR         ||
-        unit_.unit_type == sc2::UNIT_TYPEID::TERRAN_REFINERY;
+    return unit_->unit_type == sc2::UNIT_TYPEID::PROTOSS_ASSIMILATOR ||
+        unit_->unit_type == sc2::UNIT_TYPEID::ZERG_EXTRACTOR         ||
+        unit_->unit_type == sc2::UNIT_TYPEID::TERRAN_REFINERY;
 }
 
 // ----------------------------------------------------------------------------
-bool IsWorker::operator()(const sc2::Unit& unit_) const
+bool IsWorker::operator()(const WrappedUnit* unit_) const
 {
-    return unit_.unit_type == sc2::UNIT_TYPEID::TERRAN_SCV ||
-        unit_.unit_type == sc2::UNIT_TYPEID::ZERG_DRONE ||
-        unit_.unit_type == sc2::UNIT_TYPEID::PROTOSS_PROBE;
+    return unit_->unit_type == sc2::UNIT_TYPEID::TERRAN_SCV ||
+        unit_->unit_type == sc2::UNIT_TYPEID::ZERG_DRONE ||
+        unit_->unit_type == sc2::UNIT_TYPEID::PROTOSS_PROBE;
 }
 
-// ----------------------------------------------------------------------------
-bool IsGasWorker::operator()(const sc2::Unit& unit_) const {
-    if (!IsWorker()(unit_))
-        return false;
-
-    if (unit_.orders.empty())
-        return false;
-
-    if (unit_.orders.front().ability_id == sc2::ABILITY_ID::HARVEST_RETURN) {
-        if (unit_.buffs.empty())
-            return false;
-
-        return unit_.buffs.front() == sc2::BUFF_ID::CARRYHARVESTABLEVESPENEGEYSERGAS ||
-            unit_.buffs.front() == sc2::BUFF_ID::CARRYHARVESTABLEVESPENEGEYSERGASZERG ||
-            unit_.buffs.front() == sc2::BUFF_ID::CARRYHARVESTABLEVESPENEGEYSERGASPROTOSS;
-    }
-
-    if (unit_.orders.front().ability_id == sc2::ABILITY_ID::HARVEST_GATHER)
-        return gHub->IsTargetOccupied(unit_.orders.front());
-
-    return false;
-}
-
-// ----------------------------------------------------------------------------
-bool IsTownHall::operator()(const sc2::Unit& unit_) const {
-    return unit_.unit_type == sc2::UNIT_TYPEID::PROTOSS_NEXUS ||
-           unit_.unit_type == sc2::UNIT_TYPEID::TERRAN_COMMANDCENTER ||
-           unit_.unit_type == sc2::UNIT_TYPEID::TERRAN_ORBITALCOMMAND ||
-           unit_.unit_type == sc2::UNIT_TYPEID::TERRAN_PLANETARYFORTRESS ||
-           unit_.unit_type == sc2::UNIT_TYPEID::ZERG_HATCHERY ||
-           unit_.unit_type == sc2::UNIT_TYPEID::ZERG_HIVE ||
-           unit_.unit_type == sc2::UNIT_TYPEID::ZERG_LAIR;
-}
-
-// ----------------------------------------------------------------------------
-bool IsIdleTownHall::operator()(const sc2::Unit& unit_) const
+bool IsWorker::operator()(const sc2::Unit* unit_) const
 {
-    return IsTownHall()(unit_) && unit_.orders.empty() && unit_.build_progress == 1.0f;
+    return unit_->unit_type == sc2::UNIT_TYPEID::TERRAN_SCV ||
+        unit_->unit_type == sc2::UNIT_TYPEID::ZERG_DRONE ||
+        unit_->unit_type == sc2::UNIT_TYPEID::PROTOSS_PROBE;
 }
 
 // ----------------------------------------------------------------------------
-bool IsCommandCenter::operator()(const sc2::Unit& unit_) const
-{
-    return unit_.unit_type == sc2::UNIT_TYPEID::TERRAN_COMMANDCENTER       
-        || unit_.unit_type == sc2::UNIT_TYPEID::TERRAN_COMMANDCENTERFLYING 
-        || unit_.unit_type == sc2::UNIT_TYPEID::TERRAN_ORBITALCOMMAND      
-        || unit_.unit_type == sc2::UNIT_TYPEID::TERRAN_ORBITALCOMMANDFLYING
-        || unit_.unit_type == sc2::UNIT_TYPEID::TERRAN_PLANETARYFORTRESS;
+bool IsTownHall::operator()(const WrappedUnit* unit_) const {
+    return unit_->unit_type == sc2::UNIT_TYPEID::PROTOSS_NEXUS ||
+           unit_->unit_type == sc2::UNIT_TYPEID::TERRAN_COMMANDCENTER ||
+           unit_->unit_type == sc2::UNIT_TYPEID::TERRAN_ORBITALCOMMAND ||
+           unit_->unit_type == sc2::UNIT_TYPEID::TERRAN_PLANETARYFORTRESS ||
+           unit_->unit_type == sc2::UNIT_TYPEID::ZERG_HATCHERY ||
+           unit_->unit_type == sc2::UNIT_TYPEID::ZERG_HIVE ||
+           unit_->unit_type == sc2::UNIT_TYPEID::ZERG_LAIR;
 }
 
 // ----------------------------------------------------------------------------
-bool IsBuilding::operator()(const sc2::Unit& unit_) const
+bool IsIdleTownHall::operator()(const WrappedUnit* unit_) const
 {
-    return (*this)(unit_.unit_type);
+    return IsTownHall()(unit_) && unit_->IsOrdersEmpty() && unit_->build_progress == 1.0f;
+}
+
+// ----------------------------------------------------------------------------
+bool IsCommandCenter::operator()(const WrappedUnit* unit_) const
+{
+    return unit_->unit_type == sc2::UNIT_TYPEID::TERRAN_COMMANDCENTER       
+        || unit_->unit_type == sc2::UNIT_TYPEID::TERRAN_COMMANDCENTERFLYING 
+        || unit_->unit_type == sc2::UNIT_TYPEID::TERRAN_ORBITALCOMMAND      
+        || unit_->unit_type == sc2::UNIT_TYPEID::TERRAN_ORBITALCOMMANDFLYING
+        || unit_->unit_type == sc2::UNIT_TYPEID::TERRAN_PLANETARYFORTRESS;
+}
+
+// ----------------------------------------------------------------------------
+bool IsBuilding::operator()(const WrappedUnit* unit_) const
+{
+    return (*this)(unit_->unit_type);
 }
 
 // ----------------------------------------------------------------------------
@@ -303,15 +287,15 @@ bool IsBuilding::operator()(sc2::UNIT_TYPEID type_) const
         return false;
     }
 
-    sc2::UnitTypeData data = gAPI->observer().GetUnitTypeData(type_);
-    return std::find(data.attributes.begin(), data.attributes.end(), sc2::Attribute::Structure) != data.attributes.end();
+    sc2::UnitTypeData* data = gAPI->observer().GetUnitTypeData(type_);
+    return std::find(data->attributes.begin(), data->attributes.end(), sc2::Attribute::Structure) != data->attributes.end();
 
 }
 
 // ----------------------------------------------------------------------------
-bool IsAddonBuilding::operator()(const sc2::Unit& unit_) const
+bool IsAddonBuilding::operator()(const WrappedUnit* unit_) const
 {
-    return (*this)(unit_.unit_type);
+    return (*this)(unit_->unit_type);
 }
 
 // ----------------------------------------------------------------------------
@@ -349,14 +333,14 @@ bool IsOrdered::operator()(const Order& order_) const
 }
 
 // ----------------------------------------------------------------------------
-bool IsWithinDistance::operator()(const sc2::Unit& unit_) const
+bool IsWithinDistance::operator()(const WrappedUnit* unit_) const
 {
     if (m_2d)
     {
-        return sc2::DistanceSquared2D(m_center, unit_.pos) < m_distSq;
+        return sc2::DistanceSquared2D(m_center, unit_->pos) < m_distSq;
     }
 
-    return sc2::DistanceSquared3D(m_center, unit_.pos) < m_distSq;
+    return sc2::DistanceSquared3D(m_center, unit_->pos) < m_distSq;
 }
 
 // ----------------------------------------------------------------------------
@@ -366,33 +350,33 @@ HasAddon::HasAddon(sc2::UNIT_TYPEID addon_type_)
 }
 
 // ----------------------------------------------------------------------------
-bool HasAddon::operator()(const sc2::Unit& unit_) const
+bool HasAddon::operator()(const WrappedUnit* unit_) const
 {
-    if(unit_.add_on_tag == sc2::NullTag && m_addon_type == sc2::UNIT_TYPEID::INVALID)
+    if(unit_->add_on_tag == sc2::NullTag && m_addon_type == sc2::UNIT_TYPEID::INVALID)
     {
         return true;
     }
-    if (unit_.add_on_tag == sc2::NullTag && m_addon_type != sc2::UNIT_TYPEID::INVALID)
+    if (unit_->add_on_tag == sc2::NullTag && m_addon_type != sc2::UNIT_TYPEID::INVALID)
     {
         return false;
     }
 
-    const sc2::Unit* addon = gAPI->observer().GetUnit(unit_.add_on_tag);
+    const sc2::Unit* addon = gAPI->observer().GetUnit(unit_->add_on_tag);
     sc2::UNIT_TYPEID addonType = addon->unit_type.ToType();
-    auto addonAlias = gAPI->observer().GetUnitTypeData(addon->unit_type).tech_alias.front();
+    auto addonAlias = gAPI->observer().GetUnitTypeData(addon->unit_type)->tech_alias.front();
 
     return addonType == m_addon_type || addonAlias == m_addon_type;
 }
 
 // ----------------------------------------------------------------------------
-MultiFilter::MultiFilter(Selector selector_, std::initializer_list<sc2::Filter> filters_)
-    :m_filters(filters_)
-    ,m_selector(selector_)
+MultiFilter::MultiFilter(Selector selector_, std::initializer_list<API::Filter> filters_)
+    : m_filters(filters_)
+    , m_selector(selector_)
 {
 }
 
 // ----------------------------------------------------------------------------
-bool MultiFilter::operator()(const sc2::Unit& unit_) const
+bool MultiFilter::operator()(const WrappedUnit* unit_) const
 {
     if(m_selector == Selector::And)
     {
@@ -420,9 +404,9 @@ bool MultiFilter::operator()(const sc2::Unit& unit_) const
 }
 
 // ----------------------------------------------------------------------------
-sc2::Point2D GetTerranAddonPosition(const sc2::Unit& unit_)
+sc2::Point2D GetTerranAddonPosition(const WrappedUnit* unit_)
 {
-    return GetTerranAddonPosition(unit_.pos);
+    return GetTerranAddonPosition(unit_->pos);
 }
 
 // ----------------------------------------------------------------------------
@@ -434,4 +418,87 @@ sc2::Point2D GetTerranAddonPosition(const sc2::Point2D& parent_building_position
     return pos;
 }
 
+// ----------------------------------------------------------------------------
+bool CloakState::operator()(const WrappedUnit* unit_) const
+{
+    return unit_->cloak == m_state;
+}
 
+WrappedUnits GetFreeWorkers(bool includingGasWorkers)
+{
+    if (includingGasWorkers)
+    {
+        return gAPI->observer().GetUnits(MultiFilter(MultiFilter::Selector::Or,
+            {
+                IsWorkerWithJob(Worker::Job::GATHERING_NOTHING),
+                IsWorkerWithJob(Worker::Job::GATHERING_MINERALS),
+                IsWorkerWithJob(Worker::Job::GATHERING_VESPENE)
+            }), sc2::Unit::Alliance::Self);
+    }
+    else
+    {
+        return gAPI->observer().GetUnits(MultiFilter(MultiFilter::Selector::Or,
+            {
+                IsWorkerWithJob(Worker::Job::GATHERING_NOTHING),
+                IsWorkerWithJob(Worker::Job::GATHERING_MINERALS)
+            }), sc2::Unit::Alliance::Self);
+    }
+}
+
+WrappedUnit* GetClosestFreeWorker(const sc2::Point2D& location_, bool includingGasWorkers)
+{
+    WrappedUnit* closest_unit = GetFreeWorkers(includingGasWorkers).GetClosestUnit(location_);
+    if (!closest_unit)
+    {
+        return nullptr;
+    }
+
+    return closest_unit;
+}
+
+bool FreeWorkerExists(bool includingGasWorkers)
+{
+    return !GetFreeWorkers(includingGasWorkers).empty();
+}
+
+IsWorkerWithJob::IsWorkerWithJob(Worker::Job job_)
+    : m_job(job_)
+{
+}
+
+bool IsWorkerWithJob::operator()(const WrappedUnit* unit_) const
+{
+    if (IsWorker()(unit_))
+    {
+        Worker* worker = (Worker*)(unit_);
+        if (worker->GetJob() == m_job)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+IsWorkerWithHomeBase::IsWorkerWithHomeBase(const std::shared_ptr<Expansion>& homeBase_)
+    : m_homeBase(homeBase_)
+{
+}
+
+bool IsWorkerWithHomeBase::operator()(const WrappedUnit* unit_) const
+{
+    if (IsWorker()(unit_))
+    {
+        Worker* worker = (Worker*)unit_;
+        if(!worker->GetHomeBase())
+        {
+            return false;
+        }
+
+        if (worker->GetHomeBase() == m_homeBase)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}

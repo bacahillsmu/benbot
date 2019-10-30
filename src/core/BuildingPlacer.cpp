@@ -2,7 +2,7 @@
 #include "Helpers.h"
 #include "Hub.h"
 #include "API.h"
-
+#include "Historican.h"
 
 // ----------------------------------------------------------------------------
 void BuildingPlacer::OnGameStart()
@@ -13,63 +13,55 @@ void BuildingPlacer::OnGameStart()
         RegionWrapper regionWrapper(region);
         for(const auto& tile : region->getTilePositions())
         {
-            const auto& tileTerrain = tile.second->getTileTerrain();
-            if(tileTerrain == Overseer::TileTerrain::buildAndPath
-            || tileTerrain == Overseer::TileTerrain::build)
+            // Note: As we don't add minerals here the mineral locations will never be buildable! Might want to fix this
+            if (tile.second->getTileTerrain() == Overseer::TileTerrain::buildAndPath
+                || tile.second->getTileTerrain() == Overseer::TileTerrain::build)
             {
-                point.x = (int)tile.first.x;
-                point.y = (int)tile.first.y;
+                // tile x & y should already be integers, might want to assert if they aren't
+                point.x = static_cast<int>(tile.first.x);
+                point.y = static_cast<int>(tile.first.y);
                 regionWrapper.m_buildableTiles[point] = tile.second;
 
-                if(regionWrapper.regionMinX > point.x)
-                {
+                if (regionWrapper.regionMinX > point.x)
                     regionWrapper.regionMinX = point.x;
-                }
                 else if (regionWrapper.regionMaxX < point.x)
-                {
                     regionWrapper.regionMaxX = point.x;
-                }
 
                 if (regionWrapper.regionMinY > point.y)
-                {
                     regionWrapper.regionMinY = point.y;
-                }
                 else if (regionWrapper.regionMaxY < point.y)
-                {
                     regionWrapper.regionMaxY = point.y;
-                }
             }
-
-            m_regions.emplace_back(std::move(regionWrapper));
         }
+        m_regions.emplace_back(std::move(regionWrapper));
     }
 }
 
 // ----------------------------------------------------------------------------
-void BuildingPlacer::OnUnitCreated(const sc2::Unit& unit_)
+void BuildingPlacer::OnUnitCreated(WrappedUnit* unit_)
 {
     if(IsBuilding()(unit_)
-    && !unit_.is_flying)
+    && !unit_->is_flying)
     {
         AddBuildingToOccupiedTiles(unit_, TileOccupationStatus::HASBUILDING);
     }
 }
 
 // ----------------------------------------------------------------------------
-void BuildingPlacer::OnUnitDestroyed(const sc2::Unit& unit_)
+void BuildingPlacer::OnUnitDestroyed(WrappedUnit* unit_)
 {
     if(IsBuilding()(unit_)
-    && !unit_.is_flying)
+    && !unit_->is_flying)
     {
         RemoveBuildingFromOccupiedTiles(unit_);
     }
 }
 
 // ----------------------------------------------------------------------------
-void BuildingPlacer::OnUnitEnterVision(const sc2::Unit& unit_)
+void BuildingPlacer::OnUnitEnterVision(WrappedUnit* unit_)
 {
     if(IsBuilding()(unit_)
-    && !unit_.is_flying)
+    && !unit_->is_flying)
     {
         AddBuildingToOccupiedTiles(unit_, TileOccupationStatus::HASBUILDING);
     }
@@ -120,10 +112,14 @@ sc2::Point3D BuildingPlacer::ReserveBuildingSpace(const Order& order_, bool rese
 
     buildingMargin = order_.unit_type_id == sc2::UNIT_TYPEID::TERRAN_SUPPLYDEPOT ? 0 : DefaultBuildingMargin;
 
+    gHistory.info() << "We have " << gHub->GetExpansions().size() << " expansion(s)" << std::endl;
+
     for (const auto& expansion : gHub->GetExpansions())
     {
         const auto& closestRegion = gOverseerMap->getNearestRegion(expansion->m_townHallLocation);
         auto& wrappedRegion = m_regions[closestRegion->getId() - 1];
+
+        gHistory.info() << "Closest Region: " << wrappedRegion.m_region->getId() << "" << std::endl;
 
         for (int x = wrappedRegion.regionMinX; x <= wrappedRegion.regionMaxX; x++)
         {
@@ -133,12 +129,14 @@ sc2::Point3D BuildingPlacer::ReserveBuildingSpace(const Order& order_, bool rese
                 point.y = y;
                 if (IsBuildSpaceFree(point, width + (buildingMargin * 2), height + (buildingMargin * 2), wrappedRegion.m_buildableTiles))
                 {
+                    gHistory.info() << "Found some free building space." << std::endl;
                     if (reserveAddonSpace_)
                     {
                         addonPoint = point;
                         addonPoint.x += width;
                         if (IsBuildSpaceFree(addonPoint, AddonSize + (buildingMargin * 2), AddonSize + (buildingMargin * 2), wrappedRegion.m_buildableTiles))
                         {
+                            gHistory.info() << "Found some free addon space." << std::endl;
                             addonPoint.x += buildingMargin;
                             addonPoint.y += buildingMargin;
                         }
@@ -180,7 +178,7 @@ void BuildingPlacer::FreeReservedBuildingSpace(const sc2::Point3D& buildingPosit
         assert(IsAddonBuilding()(buildingType_));
     }
 
-    const auto& abilityID = gAPI->observer().GetUnitTypeData(buildingType_).ability_id;
+    const auto& abilityID = gAPI->observer().GetUnitTypeData(buildingType_)->ability_id;
     float footprintRadius = gAPI->observer().GetAbilityData(abilityID).footprint_radius;
     int minX = (int)(buildingPosition_.x - footprintRadius);
     int minY = (int)(buildingPosition_.y - footprintRadius);
@@ -215,17 +213,17 @@ void BuildingPlacer::FreeReservedBuildingSpace(const sc2::Point3D& buildingPosit
 }
 
 // ----------------------------------------------------------------------------
-bool BuildingPlacer::IsGeyserUnoccupied(const sc2::Unit& geyser_) const
+bool BuildingPlacer::IsGeyserUnoccupied(WrappedUnit* geyser_) const
 {
     assert(IsGeyser()(geyser_));
 
-    auto radius = geyser_.radius;
+    auto radius = geyser_->radius;
     int width = (int)(radius * 2.0f);
     int height = width;
 
     sc2::Point2DI bottomLeftTile;
-    bottomLeftTile.x = (int)(geyser_.pos.x - radius);
-    bottomLeftTile.y = (int)(geyser_.pos.y - radius);
+    bottomLeftTile.x = (int)(geyser_->pos.x - radius);
+    bottomLeftTile.y = (int)(geyser_->pos.y - radius);
 
     sc2::Point2DI point;
     for (int x = bottomLeftTile.x; x < (bottomLeftTile.x + width); x++)
@@ -245,17 +243,17 @@ bool BuildingPlacer::IsGeyserUnoccupied(const sc2::Unit& geyser_) const
 }
 
 // ----------------------------------------------------------------------------
-bool BuildingPlacer::ReserveGeyser(const sc2::Unit& geyser_)
+bool BuildingPlacer::ReserveGeyser(WrappedUnit* geyser_)
 {
     if (IsGeyserUnoccupied(geyser_))
     {
-        auto radius = geyser_.radius;
+        auto radius = geyser_->radius;
         int width = static_cast<int>(radius * 2);
         int height = width;
 
         sc2::Point2DI bottomLeftTile;
-        bottomLeftTile.x = (int)(geyser_.pos.x - radius);
-        bottomLeftTile.y = (int)(geyser_.pos.y - radius);
+        bottomLeftTile.x = (int)(geyser_->pos.x - radius);
+        bottomLeftTile.y = (int)(geyser_->pos.y - radius);
 
         MarkTilesAsReserved(bottomLeftTile, width, height);
 
@@ -266,24 +264,24 @@ bool BuildingPlacer::ReserveGeyser(const sc2::Unit& geyser_)
 }
 
 // ----------------------------------------------------------------------------
-void BuildingPlacer::AddBuildingToOccupiedTiles(const sc2::Unit& unit_, TileOccupationStatus tileOccupationStatus_)
+void BuildingPlacer::AddBuildingToOccupiedTiles(WrappedUnit* unit_, TileOccupationStatus tileOccupationStatus_)
 {
     assert(IsBuilding()(unit_));
 
-    if (unit_.is_flying)
+    if (unit_->is_flying)
     {
         return;
     }
 
-    auto unitTypeData = gAPI->observer().GetUnitTypeData(unit_.unit_type);
-    if(!unitTypeData.tech_alias.empty())
+    sc2::UnitTypeData* unitTypeData = gAPI->observer().GetUnitTypeData(unit_->unit_type);
+    if(!unitTypeData->tech_alias.empty())
     {
-        unitTypeData = gAPI->observer().GetUnitTypeData(unitTypeData.tech_alias.front());
+        unitTypeData = gAPI->observer().GetUnitTypeData(unitTypeData->tech_alias.front());
     }
 
-    float footprintRadius = gAPI->observer().GetAbilityData(unitTypeData.ability_id).footprint_radius;
-    int minX = (int)(unit_.pos.x - footprintRadius);
-    int minY = (int)(unit_.pos.y - footprintRadius);
+    float footprintRadius = gAPI->observer().GetAbilityData(unitTypeData->ability_id).footprint_radius;
+    int minX = (int)(unit_->pos.x - footprintRadius);
+    int minY = (int)(unit_->pos.y - footprintRadius);
     int width = (int)(footprintRadius * 2.0f);
     int height = width;
 
@@ -300,24 +298,24 @@ void BuildingPlacer::AddBuildingToOccupiedTiles(const sc2::Unit& unit_, TileOccu
 }
 
 // ----------------------------------------------------------------------------
-void BuildingPlacer::RemoveBuildingFromOccupiedTiles(const sc2::Unit& unit_)
+void BuildingPlacer::RemoveBuildingFromOccupiedTiles(WrappedUnit* unit_)
 {
     assert(IsBuilding()(unit_));
 
-    if (unit_.is_flying)
+    if (unit_->is_flying)
     {
         return;
     }
 
-    auto unitTypeData = gAPI->observer().GetUnitTypeData(unit_.unit_type);
-    if (!unitTypeData.tech_alias.empty())
+    sc2::UnitTypeData* unitTypeData = gAPI->observer().GetUnitTypeData(unit_->unit_type);
+    if (!unitTypeData->tech_alias.empty())
     {
-        unitTypeData = gAPI->observer().GetUnitTypeData(unitTypeData.tech_alias.front());
+        unitTypeData = gAPI->observer().GetUnitTypeData(unitTypeData->tech_alias.front());
     }
 
-    float footprintRadius = gAPI->observer().GetAbilityData(unitTypeData.ability_id).footprint_radius;
-    int minX = (int)(unit_.pos.x - footprintRadius);
-    int minY = (int)(unit_.pos.y - footprintRadius);
+    float footprintRadius = gAPI->observer().GetAbilityData(unitTypeData->ability_id).footprint_radius;
+    int minX = (int)(unit_->pos.x - footprintRadius);
+    int minY = (int)(unit_->pos.y - footprintRadius);
     int width = (int)(footprintRadius * 2.0f);
     int height = width;
 

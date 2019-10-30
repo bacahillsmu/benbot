@@ -5,16 +5,20 @@
 #include "Mutation.h"
 #include "core/API.h"
 #include "core/Helpers.h"
+#include "Hub.h"
 
-bool Mutation::Build(Order* order_) {
-    auto targets = gAPI->observer().GetUnits(
-        IsIdleUnit(order_->tech_alias.back()));
+bool Mutation::CanBeBuilt(const Order* order_)
+{
+    return gHub->GetFreeBuildingProductionAssignee(order_, order_->tech_alias.back()) != nullptr;
+}
 
-    if (targets.Empty())
-        return false;
+bool Mutation::Build(Order* order_)
+{
+    if (gHub->AssignBuildingProduction(order_, order_->tech_alias.back()))
+    {
+        gAPI->action().Build(*order_);
+        return true;
+    }
 
-    order_->assignee = targets().front()->tag;
-    gAPI->action().Build(*order_);
-
-    return true;
+    return false;
 }

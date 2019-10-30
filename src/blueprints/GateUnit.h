@@ -6,6 +6,6 @@
 
 #include "Blueprint.h"
 
-struct GateUnit: Blueprint {
-    bool Build(Order* order_) final;
-};
+// struct GateUnit: Blueprint {
+//     bool Build(Order* order_) final;
+// };
