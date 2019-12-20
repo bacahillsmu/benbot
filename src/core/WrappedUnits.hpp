@@ -10,7 +10,6 @@
 
 #include <functional>
 #include <memory>
-#include <optional>
 #include <utility>
 
 
@@ -25,7 +24,7 @@ public:
     explicit WrappedUnits(std::vector<WrappedUnit*> units_);
 
     WrappedUnit* GetClosestUnit(const sc2::Point2D& point_);
-    const WrappedUnit* GetClosestUnit(const sc2::Point2D& point_) const;
+    WrappedUnit* GetClosestUnit(const sc2::Point2D& point_) const;
 
     WrappedUnit* GetClosestUnit(sc2::Tag tag_);
     const WrappedUnit* GetClosestUnit(sc2::Tag tag_) const;

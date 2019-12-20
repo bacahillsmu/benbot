@@ -130,7 +130,7 @@ void QuarterMaster::OnStep(Builder* builder_)
 
     float expected_consumption =
         gAPI->observer().GetFoodUsed()
-        + m_planningAhead  // NOTE (alkurbatov): Plan ahead.
+        + m_planningAhead
         + std::accumulate(
             training_orders.begin(),
             training_orders.end(),
@@ -163,34 +163,13 @@ void QuarterMaster::OnStep(Builder* builder_)
 
     m_skip_turn = true;
 
-    switch (gHub->GetCurrentRace())
-    {
-        case sc2::Race::Terran:
-        {
-            builder_->ScheduleConstruction(sc2::UNIT_TYPEID::TERRAN_SUPPLYDEPOT, true);
-            return;
-        }
-
-        case sc2::Race::Zerg:
-        {
-            builder_->ScheduleTraining(sc2::UNIT_TYPEID::ZERG_OVERLORD, nullptr, true);
-            return;
-        }
-
-        default:
-        {
-            builder_->ScheduleConstruction(sc2::UNIT_TYPEID::PROTOSS_PYLON, true);
-            return;
-        }
-    }
+    builder_->ScheduleConstruction(sc2::UNIT_TYPEID::TERRAN_SUPPLYDEPOT, true);
 }
 
 // ----------------------------------------------------------------------------
 void QuarterMaster::OnUnitCreated(WrappedUnit* unit_,  Builder*)
 {
-    if (unit_->unit_type == sc2::UNIT_TYPEID::TERRAN_SUPPLYDEPOT ||
-        unit_->unit_type == sc2::UNIT_TYPEID::ZERG_OVERLORD      ||
-        unit_->unit_type == sc2::UNIT_TYPEID::PROTOSS_PYLON)
+    if (unit_->unit_type == sc2::UNIT_TYPEID::TERRAN_SUPPLYDEPOT)
     {
         m_skip_turn = false;
     }

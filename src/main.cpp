@@ -56,8 +56,41 @@ int main(int argc, char* argv[])
         CreateComputer(sc2::Race::Random, sc2::Difficulty::Hard)
     });
 
+    srand((unsigned int)time(0));
+    int random = rand() % 7;
+    std::string mapName = "";
+    if(random == 0)
+    {
+        mapName = "AcropolisLE.SC2Map";
+    }
+    else if(random == 1)
+    {
+        mapName = "DiscoBloodbathLE.SC2Map";
+    }
+    else if (random == 2)
+    {
+        mapName = "EphemeronLE.SC2Map";
+    }
+    else if (random == 3)
+    {
+        mapName = "ThunderbirdLE.SC2Map";
+    }
+    else if (random == 4)
+    {
+        mapName = "TritonLE.SC2Map";
+    }
+    else if (random == 5)
+    {
+        mapName = "WintersGateLE.SC2Map";
+    }
+    else if (random == 6)
+    {
+        mapName = "WorldofSleepersLE.SC2Map";
+    }
+
     coordinator.LaunchStarcraft();
-    coordinator.StartGame(argv[1]);
+    coordinator.StartGame(mapName);
+    //coordinator.StartGame(argv[1]);
 
     while (coordinator.Update())
     {

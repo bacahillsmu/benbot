@@ -12,23 +12,24 @@ class WrappedUnits;
 
 class MicroPlugin
 {
+    
 
 public:
 
-    explicit MicroPlugin(const WrappedUnit* unit);
+    explicit MicroPlugin(WrappedUnit* unit);
     virtual ~MicroPlugin() = default;
 
-    void OnCombatFrame(const WrappedUnit* self, const WrappedUnits& enemies, const WrappedUnits& allies, const sc2::Point2D& attackMovePos);
-    void OnCombatOver(const WrappedUnit* self);
+    void OnCombatFrame(WrappedUnit* self, const WrappedUnits& enemies, const WrappedUnits& allies, const sc2::Point2D& attackMovePos);
+    void OnCombatOver(WrappedUnit* self);
 
-    static std::unique_ptr<MicroPlugin> MakePlugin(const WrappedUnit* unit);
+    static std::unique_ptr<MicroPlugin> MakePlugin(WrappedUnit* unit);
 
 protected:
 
     virtual void OnCombatStep(const WrappedUnits& enemies, const WrappedUnits& allies) = 0;
     virtual void OnCombatEnded() { }
 
-    bool CanCast(sc2::ABILITY_ID ability_id);
+    bool CanCast(sc2::ABILITY_ID ability_id) const;
     void Attack(const WrappedUnit* target);
     void AttackMove();                          // Attack move towards enemies;   
     void AttackMove(const sc2::Point2D& pos);   // Attack move towards specific spot;
@@ -37,12 +38,15 @@ protected:
     void Cast(sc2::ABILITY_ID ability);
     void Cast(sc2::ABILITY_ID ability, const WrappedUnit* target);
     void Cast(sc2::ABILITY_ID ability, const sc2::Point2D& point);
-    bool IsAttacking(const WrappedUnit* target) const;
+    bool IsAttacking(const WrappedUnit* target);
     bool IsMoving() const;
-    //bool IsAttackMoving() const;
-    //bool IsAttackMoving(const sc2::Point2D& pos) const;
 
-    const WrappedUnit* m_self;
+    WrappedUnit* m_self;
+
+    // Reaper - BehaviorTrees
+    friend class RetreatBecauseOfHealth;
+    friend class FireWeapon;
+    friend class BackUpAndThrowKD8Charge;
 
 private:
 

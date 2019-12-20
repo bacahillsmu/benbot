@@ -7,7 +7,7 @@ class DefaultUnit : public MicroPlugin
 
 public:
 
-    explicit DefaultUnit(const WrappedUnit* unit);
+    explicit DefaultUnit(WrappedUnit* unit);
 
     void OnCombatStep(const WrappedUnits& enemies, const WrappedUnits& allies) override;
 };

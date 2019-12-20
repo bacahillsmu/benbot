@@ -2,6 +2,7 @@
 #include "core/API.h"
 #include "core/Helpers.h"
 #include "Hub.h"
+#include "Historican.h"
 
 
 // ----------------------------------------------------------------------------
@@ -10,26 +11,26 @@ ControlGroup::ControlGroup()
 }
 
 // ----------------------------------------------------------------------------
+ControlGroup::ControlGroup(WrappedUnit* unit)
+{
+    AddUnit(unit);
+}
+
+// ----------------------------------------------------------------------------
 void ControlGroup::OnStep()
 {
     // Clean up my Units;
-    std::vector<WrappedUnit*>::iterator myUnitsToRemove =
-    std::remove_if(m_units.begin(), m_units.end(),
-        [](auto* myUnit)
-        {
-            return !myUnit->is_alive || !myUnit->IsInVision;
+    auto itr = std::remove_if(m_units.begin(), m_units.end(),
+        [](auto* u) {
+            return !u->is_alive || !u->IsInVision;
         });
+    m_units.erase(itr, m_units.end());
 
-    // Clean up Enemy Units;
-    std::vector<WrappedUnit*>::iterator enemyUnitsToRemove =
-    std::remove_if(m_enemies.begin(), m_enemies.end(),
-        [](const WrappedUnit* enemyUnit)
-        {
-            return !enemyUnit->is_alive || !enemyUnit->IsInVision;
+    auto jitr = std::remove_if(m_enemies.begin(), m_enemies.end(),
+        [](const WrappedUnit* u) {
+            return !u->is_alive || !u->IsInVision;
         });
-
-    m_units.erase(myUnitsToRemove, m_units.end());
-    m_enemies.erase(enemyUnitsToRemove, m_enemies.end());
+    m_enemies.erase(jitr, m_enemies.end());
 
     CalculateCenter();
     Update();
@@ -44,12 +45,12 @@ void ControlGroup::Update()
         return;
     }
 
-//     if(IsTaskFinished()) // There is no coming back... You die first;
-//     {
-//         AbortMovement();
-//         m_sent = false;
-//         return;
-//     }
+    if(IsTaskFinished())
+    {
+        AbortMovement();
+        m_sent = false;
+        return;
+    }
 
     WrappedUnits enemies = gAPI->observer().GetUnits(
         MultiFilter(MultiFilter::Selector::And,
@@ -58,10 +59,19 @@ void ControlGroup::Update()
                 AggroRadius)
         }), sc2::Unit::Alliance::Enemy);
 
-//     if (enemies.empty() && IsMoving())
-//     {
-//         return;
-//     }
+    if(enemies.empty() && IsInCombat())
+    {
+        AbortMovement();
+        m_sent = false;
+        gHistory.info() << "No Enemies and InCombat. Leaving Combat and going Idle." << std::endl;
+        return;
+    }
+
+    if (enemies.empty() && IsMoving())
+    {
+        gHistory.info() << "No Enemies and IsMoving." << std::endl;
+        return;
+    }
 
     if (enemies.empty())
     {
@@ -69,12 +79,14 @@ void ControlGroup::Update()
         {
             unit->Micro()->OnCombatOver(unit);
         }
-            
+
+        gHistory.info() << "No Enemies and since we made it this far, we are not Moving. Setting approach." << std::endl;
         Approach(NextHarassTarget());
     }
     else
     {
         SetEnemies(std::move(enemies));
+        m_moveState = MovementState::COMBAT;
         for (auto& unit : GetUnits())
         {
             unit->Micro()->OnCombatFrame(unit, GetEnemyUnits(), GetUnits(), GetAttackMovePoint());
@@ -122,6 +134,9 @@ void ControlGroup::UpdateMovement()
             {
                 IssueMoveCommand(m_approachPos);
             }
+
+            IssueMoveCommand(m_approachPos);
+
             break;
         }
 
@@ -174,6 +189,12 @@ const WrappedUnits& ControlGroup::GetUnits() const
 }
 
 // ----------------------------------------------------------------------------
+WrappedUnits& ControlGroup::GetUnitsToModify()
+{
+    return m_units;
+}
+
+// ----------------------------------------------------------------------------
 void ControlGroup::AddEnemy(WrappedUnit* enemy_)
 {
     m_enemies.push_back(enemy_);
@@ -200,6 +221,7 @@ void ControlGroup::SetEnemies(WrappedUnits enemies_)
 // ----------------------------------------------------------------------------
 void ControlGroup::Send()
 {
+    gHistory.info() << "ControlGroup Sent" << std::endl;
     m_sent = true;
     Approach(NextHarassTarget());
 }
@@ -222,7 +244,7 @@ void ControlGroup::RegroupAt(const sc2::Point2D& position)
 // ----------------------------------------------------------------------------
 bool ControlGroup::IsTaskFinished()
 {
-    return GetEnemyUnits().empty();
+    return GetUnits().empty();
 }
 
 // ----------------------------------------------------------------------------

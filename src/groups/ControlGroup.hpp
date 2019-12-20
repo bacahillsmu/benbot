@@ -9,6 +9,7 @@ class ControlGroup
 public:
 
 	ControlGroup();
+	ControlGroup(WrappedUnit* unit);
 	virtual ~ControlGroup() = default;
 
 	bool IsTaskFinished();
@@ -22,6 +23,7 @@ public:
 	void AddUnit(WrappedUnit* unit_);
 	void RemoveUnit(WrappedUnit* unit_);
 	const WrappedUnits& GetUnits() const;
+	WrappedUnits& GetUnitsToModify();
 
 	// Enemy Units;
 	void AddEnemy(WrappedUnit* enemy_);
@@ -37,6 +39,7 @@ public:
 	inline float GetSpreadRadius() const { return m_spreadRadius; }
 	inline const sc2::Point2D& GetEnemyCenter() const { return m_enemyCenter; }
 	inline float GetEnemySpreadRadius() const { return m_enemySpreadRadius; }
+	inline bool IsInCombat() const { return m_moveState == MovementState::COMBAT; }
 	inline bool IsMoving() const { return m_moveState != MovementState::IDLE; }
 	inline const sc2::Point2D& GetAttackMovePoint() const {	return m_enemyCenter; }
 	inline bool IsSent() const { return m_sent; }
@@ -63,6 +66,7 @@ private:
 	{
 		IDLE,
 		APPROACH,
+		COMBAT,
 		REGROUP
 	};
 	MovementState m_moveState = MovementState::IDLE;

@@ -37,12 +37,6 @@ void MechOpener::OnGameStart(Builder* builder_)
     builder_->ScheduleConstruction(sc2::UNIT_TYPEID::TERRAN_FACTORY);
     builder_->ScheduleConstruction(sc2::UNIT_TYPEID::TERRAN_BARRACKS);
 
-    // Behavior Tree;
-// 	auto sequence = std::make_shared<BrainTree::Sequence>();
-// 	auto myAction = std::make_shared<Action>();
-// 	sequence->addChild(myAction);
-// 	tree.setRoot(sequence);
-
 }
 
 // ----------------------------------------------------------------------------

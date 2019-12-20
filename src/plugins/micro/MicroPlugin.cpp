@@ -5,7 +5,7 @@
 #include "core/API.h"
 
 
-std::unique_ptr<MicroPlugin> MicroPlugin::MakePlugin(const WrappedUnit* unit)
+std::unique_ptr<MicroPlugin> MicroPlugin::MakePlugin(WrappedUnit* unit)
 {
     switch (unit->unit_type.ToType())
     {
@@ -21,14 +21,14 @@ std::unique_ptr<MicroPlugin> MicroPlugin::MakePlugin(const WrappedUnit* unit)
     }
 }
 
-MicroPlugin::MicroPlugin(const WrappedUnit* unit)
+MicroPlugin::MicroPlugin(WrappedUnit* unit)
     : m_self(unit)
     , m_target(nullptr)
     , m_moving(false)
 {
 }
 
-void MicroPlugin::OnCombatFrame(const WrappedUnit* self, const WrappedUnits& enemies, const WrappedUnits& allies, const sc2::Point2D& attackMovePos)
+void MicroPlugin::OnCombatFrame(WrappedUnit* self, const WrappedUnits& enemies, const WrappedUnits& allies, const sc2::Point2D& attackMovePos)
 {
     m_self = self;
     m_attackMovePos = attackMovePos;
@@ -46,7 +46,7 @@ void MicroPlugin::OnCombatFrame(const WrappedUnit* self, const WrappedUnits& ene
     OnCombatStep(enemies, allies);
 }
 
-void MicroPlugin::OnCombatOver(const WrappedUnit* self)
+void MicroPlugin::OnCombatOver(WrappedUnit* self)
 {
     m_self = self;
 
@@ -56,7 +56,7 @@ void MicroPlugin::OnCombatOver(const WrappedUnit* self)
     m_moving = false;
 }
 
-bool MicroPlugin::CanCast(sc2::ABILITY_ID ability_id)
+bool MicroPlugin::CanCast(sc2::ABILITY_ID ability_id) const
 {
     if (!m_self)
     {
@@ -152,7 +152,7 @@ void MicroPlugin::Cast(sc2::ABILITY_ID ability, const sc2::Point2D& point)
     }
 }
 
-bool MicroPlugin::IsAttacking(const WrappedUnit* target) const
+bool MicroPlugin::IsAttacking(const WrappedUnit* target)
 {
     return m_target == target;
 }

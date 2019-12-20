@@ -11,13 +11,24 @@ void Combat::OnStep(Builder* builder_)
 {
     builder_;
 
+    // We keep Reapers in individual control groups;
+    for(auto& reaperControlGroup : m_reaperControlGroups)
+    {
+        if(!reaperControlGroup.IsSent() && reaperControlGroup.size() > 0)
+        {
+            reaperControlGroup.Send();
+        }
+
+        reaperControlGroup.OnStep();
+    }
+
+    // Our main control group;
     if(!m_mainControlGroup.IsSent() && m_mainControlGroup.size() > 0)
     {
         m_mainControlGroup.Send();
     }
-    m_mainControlGroup.OnStep();
 
-    
+    m_mainControlGroup.OnStep();
 }
 
 // ----------------------------------------------------------------------------
@@ -35,8 +46,13 @@ void Combat::OnUnitCreated(WrappedUnit* unit_, Builder* builder_)
     // We only support Reaper for the time being;
     if(unit_->unit_type == sc2::UNIT_TYPEID::TERRAN_REAPER)
     {
-        m_mainControlGroup.AddUnit(unit_);
+        m_reaperControlGroups.push_back(ControlGroup(unit_));
     }
 }
 
+// ----------------------------------------------------------------------------
+void Combat::OnUnitDestroyed(WrappedUnit* unit_, Builder*)
+{
+    unit_;
+}
 

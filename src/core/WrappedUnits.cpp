@@ -20,7 +20,7 @@ WrappedUnit* WrappedUnits::GetClosestUnit(const sc2::Point2D& point_)
 }
 
 // ----------------------------------------------------------------------------
-const WrappedUnit* WrappedUnits::GetClosestUnit(const sc2::Point2D& point_) const
+WrappedUnit* WrappedUnits::GetClosestUnit(const sc2::Point2D& point_) const
 {
     float distance = std::numeric_limits<float>::max();
 

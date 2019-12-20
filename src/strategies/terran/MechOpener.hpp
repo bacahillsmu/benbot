@@ -6,8 +6,6 @@
 
 #include "Builder.h"
 #include "strategies/Strategy.h"
-#include "BrainTree/BrainTree.h"
-#include "BrainTree/Action.hpp"
 
 #include "plugins/micro/MicroPlugin.h"
 
@@ -19,8 +17,6 @@ struct MechOpener : Strategy
 	void OnGameStart(Builder* builder_) final;
 	void OnUnitIdle(WrappedUnit* unit_, Builder* builder_) final;
 	void OnUnitCreated(WrappedUnit* unit_, Builder* builder_) final;
-
-	//void OnCombatStep(const Units& enemies, const Units& allies) override;
 
 private:
 
@@ -35,8 +31,6 @@ private:
 	};
 
 	State m_state;
-
-	BrainTree::BehaviorTree tree;
 
 	bool m_buildMarines = false;
 

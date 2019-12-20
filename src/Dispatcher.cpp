@@ -17,8 +17,7 @@
 #include "plugins/QuarterMaster.h"
 #include "plugins/Combat.hpp"
 
-#include "strategies/terran/MechOpener.hpp"
-#include "plugins/ReaperFirst.hpp"
+#include "strategies/terran/ReaperRush.hpp"
 
 #include <sc2api/sc2_common.h>
 #include <sc2api/sc2_unit.h>
@@ -76,8 +75,7 @@ void Dispatcher::OnGameStart()
     m_plugins.emplace_back(new ChatterBox());
     m_plugins.emplace_back(new Combat());
 
-    m_plugins.emplace_back(new MechOpener());
-    m_plugins.emplace_back(new ReaperFirst());
+    m_plugins.emplace_back(new ReaperRush());
 
 
 
